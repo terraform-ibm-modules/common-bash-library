@@ -22,7 +22,7 @@ jobs:
     container:
       image: icr.io/goldeneye_images/goldeneye-ci-image:stable
       env:
-        TF_VAR_ibmcloud_api_key: ${{ secrets.IBMCLOUD_API_KEY }}
+        IBMCLOUD_API_KEY: ${{ secrets.IBMCLOUD_API_KEY }}
         GH_TOKEN: ${{ secrets.GH_TOKEN }}
         MAKE_API_CALLS: true
 
