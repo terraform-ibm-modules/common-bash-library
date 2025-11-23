@@ -3,7 +3,7 @@
 A library of bash functions for common tasks.
 
 
-## common
+## [common](common)
 <details>
   <summary>assert_eq</summary>
 
@@ -116,7 +116,7 @@ check_required_bins git jq
 
 <!------------------------------------------------>
 
-## ibmcloud/iam
+## [ibmcloud/iam](ibmcloud/iam.sh)
 <details>
   <summary>generate_iam_bearer_token</summary>
 
