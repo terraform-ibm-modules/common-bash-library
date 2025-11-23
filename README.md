@@ -2,7 +2,6 @@
 
 A library of bash functions for common tasks.
 
-
 ## [common](common)
 <details>
   <summary>assert_eq</summary>
