@@ -185,10 +185,171 @@ check_required_bins() {
 }
 
 #===============================================================
+# FUNCTION: is_boolean
+# DESCRIPTION: Determine is value is a boolean.
+#
+# ARGUMENTS:
+#   - $1: value to check (required)
+#
+# RETURNS:
+#   0 - Success (value is a boolean - true, True, false or False)
+#   1 - Failure (value is not a boolean)
+#   2 - Failure (incorrect usage of function)
+#
+# USAGE: is_boolean <value>
+#===============================================================
+is_boolean() {
+
+  # Validate an arg has been provided
+  if [ $# -ne 1 ]; then
+    echo "Error: is_boolean requires exactly 1 argument, but $# were provided" >&2
+    echo "Usage: is_boolean <value>" >&2
+    exit ${RETURN_CODE_ERROR_INCORRECT_USAGE}
+  fi
+
+  if [[ $1 =~ ^([Tt]rue|[Ff]alse)$ ]]; then
+    return ${RETURN_CODE_SUCCESS}
+  else
+    return ${RETURN_CODE_ERROR}
+  fi
+}
+
+#===============================================================
+# FUNCTION: return_mac_architecture
+# DESCRIPTION: Returns the architecture of the MacOS
+#
+# RETURNS:
+#   0 - Success
+#     - "amd64" - if the OS is macOS and the CPU is Intel
+#     - "arm64" - if the OS is macOS and the CPU is Apple Silicon
+#   2 - Failure (Did not detect MacOS)
+#
+# USAGE: return_mac_architecture
+#===============================================================
+return_mac_architecture() {
+
+  local arch="arm64"
+  local cpu
+  if [[ ${OSTYPE} == 'darwin'* ]]; then
+    cpu="$(sysctl -a | grep machdep.cpu.brand_string)"
+    if [[ "${cpu}" == 'machdep.cpu.brand_string: Intel'* ]]; then
+      # macOS on Intel architecture
+      arch="amd64"
+    fi
+  else
+    echo "Unsupported OS: ${OSTYPE}" >&2
+    return ${RETURN_CODE_ERROR_INCORRECT_USAGE}
+  fi
+  echo ${arch}
+}
+
+#===============================================================
+# FUNCTION: install_jq
+# DESCRIPTION: Installs jq binary
+#
+# ENVIRONMENT VARIABLES:
+#   - VERBOSE: If set to true, print verbose output (optional, defaults to false)
+#
+# ARGUMENTS:
+#   - $1: version of jq to install (optional, defaults to latest). Example format of valid version is "1.8.1".
+#   - $2: location to install jq to (optional, defaults to /usr/local/bin)
+#   - $3: if set to true, skips installation if jq is already detected (optional, defaults to true)
+#   - $4: the exact url to download jq from (optional, defaults to https://github.com/jqlang/jq/releases/latest/download/jq-${os}-${arch})
+#
+# RETURNS:
+#   0 - Success (all binaries are found)
+#   1 - Failure (if any of the binaries are not found)
+#   2 - Failure (incorrect usage of function)
+#
+# USAGE: install_jq "latest" "/usr/local/bin" "true"
+#===============================================================
+install_jq() {
+
+  local version=${1:-"latest"} # default to latest if not specified
+  local location=${2:-"/usr/local/bin"}
+  local skip_if_detected=${3:-"true"}
+  local link_to_binary=${4:-""}
+  local verbose=${VERBOSE:-false}
+
+  # Validate $3 arg is boolean
+  if ! is_boolean "${skip_if_detected}"; then
+    echo "Unsupported value detected for the 3rd argument. Only 'true' or 'false' is supported. Found: ${skip_if_detected}." >&2
+    return ${RETURN_CODE_ERROR_INCORRECT_USAGE}
+  fi
+
+  # return 0 if jq already installed and skip_if_detected is true
+  if [ "${skip_if_detected}" == "true" ]; then
+    if check_required_bins jq; then
+      if [ "${verbose}" = true ]; then
+        echo "Found jq already installed. Taking no action."
+      fi
+      return ${RETURN_CODE_SUCCESS}
+    fi
+  else
+    # ensure curl is installed
+    check_required_bins curl
+
+    # strip "v" prefix if it exists in version
+    if [[ "${version}" == "v"* ]]; then
+      version="${version#v}"
+    fi
+
+    # if no link to binary passed, determine the download link based on detected os and arch
+    if [ -z "${link_to_binary}" ]; then
+      # determine the OS and architecture
+      local os="linux"
+      local arch="amd64"
+      if [[ ${OSTYPE} == 'darwin'* ]]; then
+        arch=$(return_mac_architecture)
+      fi
+      # determine download link to binary
+      link_to_binary="https://github.com/jqlang/jq/releases/download/jq-${version}/jq-${os}-${arch}"
+      if [ "${version}" = "latest" ]; then
+        link_to_binary="https://github.com/jqlang/jq/releases/latest/download/jq-${os}-${arch}"
+      fi
+    fi
+
+    # use sudo if needed
+    local arg=""
+    if ! [ -w "${location}" ]; then
+      echo "No write permission to ${location}. Using sudo..."
+      arg=sudo
+    fi
+
+    # remove if already exists
+    ${arg} rm -f "${location}/jq"
+
+    # download binary
+    set +e
+    if ! ${arg} curl --silent \
+      --connect-timeout 5 \
+      --max-time 10 \
+      --retry 3 \
+      --retry-delay 2 \
+      --retry-connrefused \
+      --fail \
+      --show-error \
+      --location \
+      --output "${location}/jq" \
+      "${link_to_binary}"
+    then
+      echo "Failed to download ${link_to_binary}"
+      return ${RETURN_CODE_ERROR}
+    fi
+    set -e
+
+    # make executable
+    ${arg} chmod +x "${location}/jq"
+  fi
+  return ${RETURN_CODE_SUCCESS}
+}
+
+#===============================================================
 # UNIT TESTS
 #===============================================================
 
 _test() {
+    local make_api_calls="${MAKE_API_CALLS:-false}"
     printf "%s\n\n" "Running tests.."
 
     # check_env_vars
@@ -222,6 +383,42 @@ _test() {
     check_required_bins dfdsfdsag >/dev/null 2>&1 || rc=$?
     assert_fail "${rc}"
     printf "%s\n\n" "✅ PASS"
+
+    # is_boolean
+    # -----------------------------------
+    # - Test valid booleans
+    for i in "true" "false" "True" "False"; do
+      printf "%s\n" "Running 'is_boolean $i'"
+      rc=${RETURN_CODE_SUCCESS}
+      is_boolean $i >/dev/null 2>&1 || rc=$?
+      assert_pass "${rc}"
+      printf "%s\n\n" "✅ PASS"
+    done
+
+    # - Test non valid boolean
+    printf "%s\n" "Running 'is_boolean not_a_boolean'"
+    rc=${RETURN_CODE_SUCCESS}
+    is_boolean not_a_boolean >/dev/null 2>&1 || rc=$?
+    assert_fail "${rc}"
+    printf "%s\n\n" "✅ PASS"
+
+    # install_jq
+    # -----------------------------------
+    if [ "${make_api_calls}" = true ]; then
+      # - Test 0 returned using defaults
+      printf "%s\n" "Running 'install_jq'"
+      rc=${RETURN_CODE_SUCCESS}
+      install_jq >/dev/null 2>&1 || rc=$?
+      assert_pass "${rc}"
+      printf "%s\n\n" "✅ PASS"
+
+      # - Test 0 returned passing override args
+      printf "%s\n" "Running 'install_jq 1.8.1 /tmp false'"
+      rc=${RETURN_CODE_SUCCESS}
+      install_jq "1.8.1" "/tmp" "false" >/dev/null 2>&1 || rc=$?
+      assert_pass "${rc}"
+      printf "%s\n\n" "✅ PASS"
+    fi
 
     # -----------------------------------
     echo "✅ All tests passed!"
