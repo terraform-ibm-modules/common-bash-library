@@ -174,7 +174,9 @@ check_required_bins() {
   done
 
   if (( ${#missing[@]} )); then
-    echo "Missing binaries: ${missing[*]}" >&2
+    if [ "${verbose}" = true ]; then
+      echo "Missing binaries: ${missing[*]}" >&2
+    fi
     return ${RETURN_CODE_ERROR}
   fi
 
@@ -257,8 +259,8 @@ return_mac_architecture() {
 #   - $4: the exact url to download jq from (optional, defaults to https://github.com/jqlang/jq/releases/latest/download/jq-${os}-${arch})
 #
 # RETURNS:
-#   0 - Success (all binaries are found)
-#   1 - Failure (if any of the binaries are not found)
+#   0 - Success (jq installation successful)
+#   1 - Failure (jq installation failed)
 #   2 - Failure (incorrect usage of function)
 #
 # USAGE: install_jq "latest" "/usr/local/bin" "true"
@@ -285,61 +287,67 @@ install_jq() {
       fi
       return ${RETURN_CODE_SUCCESS}
     fi
-  else
-    # ensure curl is installed
-    check_required_bins curl
+  fi
+  # ensure curl is installed
+  check_required_bins curl || return $?
 
-    # strip "v" prefix if it exists in version
-    if [[ "${version}" == "v"* ]]; then
-      version="${version#v}"
+  # strip "v" prefix if it exists in version
+  if [[ "${version}" == "v"* ]]; then
+    version="${version#v}"
+  fi
+
+  # if no link to binary passed, determine the download link based on detected os and arch
+  if [ -z "${link_to_binary}" ]; then
+    # determine the OS and architecture
+    local os="linux"
+    local arch="amd64"
+    if [[ ${OSTYPE} == 'darwin'* ]]; then
+      arch=$(return_mac_architecture)
     fi
-
-    # if no link to binary passed, determine the download link based on detected os and arch
-    if [ -z "${link_to_binary}" ]; then
-      # determine the OS and architecture
-      local os="linux"
-      local arch="amd64"
-      if [[ ${OSTYPE} == 'darwin'* ]]; then
-        arch=$(return_mac_architecture)
-      fi
-      # determine download link to binary
-      link_to_binary="https://github.com/jqlang/jq/releases/download/jq-${version}/jq-${os}-${arch}"
-      if [ "${version}" = "latest" ]; then
-        link_to_binary="https://github.com/jqlang/jq/releases/latest/download/jq-${os}-${arch}"
-      fi
+    # determine download link to binary
+    link_to_binary="https://github.com/jqlang/jq/releases/download/jq-${version}/jq-${os}-${arch}"
+    if [ "${version}" = "latest" ]; then
+      link_to_binary="https://github.com/jqlang/jq/releases/latest/download/jq-${os}-${arch}"
     fi
+  fi
+  if [ "${verbose}" = true ]; then
+    echo "Using download link: ${link_to_binary}"
+  fi
 
-    # use sudo if needed
-    local arg=""
-    if ! [ -w "${location}" ]; then
-      echo "No write permission to ${location}. Using sudo..."
-      arg=sudo
-    fi
+  # use sudo if needed
+  local arg=""
+  if ! [ -w "${location}" ]; then
+    echo "No write permission to ${location}. Using sudo..."
+    arg=sudo
+  fi
 
-    # remove if already exists
-    ${arg} rm -f "${location}/jq"
+  # remove if already exists
+  ${arg} rm -f "${location}/jq"
 
-    # download binary
-    set +e
-    if ! ${arg} curl --silent \
-      --connect-timeout 5 \
-      --max-time 10 \
-      --retry 3 \
-      --retry-delay 2 \
-      --retry-connrefused \
-      --fail \
-      --show-error \
-      --location \
-      --output "${location}/jq" \
-      "${link_to_binary}"
-    then
-      echo "Failed to download ${link_to_binary}"
-      return ${RETURN_CODE_ERROR}
-    fi
-    set -e
+  # download binary
+  set +e
+  if ! ${arg} curl --silent \
+    --connect-timeout 5 \
+    --max-time 10 \
+    --retry 3 \
+    --retry-delay 2 \
+    --retry-connrefused \
+    --fail \
+    --show-error \
+    --location \
+    --output "${location}/jq" \
+    "${link_to_binary}"
+  then
+    echo "Failed to download ${link_to_binary}"
+    return ${RETURN_CODE_ERROR}
+  fi
+  set -e
 
-    # make executable
-    ${arg} chmod +x "${location}/jq"
+  # make executable
+  ${arg} chmod +x "${location}/jq"
+
+  if [ "${verbose}" = true ]; then
+    echo "Successfully completed installation to ${location}/jq"
   fi
   return ${RETURN_CODE_SUCCESS}
 }
@@ -405,14 +413,27 @@ _test() {
     # install_jq
     # -----------------------------------
     if [ "${make_api_calls}" = true ]; then
-      # - Test 0 returned using defaults
-      printf "%s\n" "Running 'install_jq'"
+      # Check if jq already exists on $PATH
+      local jq_installed=true
+      check_required_bins jq || jq_installed=false
+
+      # - Test installing jq using defaults (when it does not already exist)
+      if [ ${jq_installed} = false ]; then
+        printf "%s\n" "Running 'install_jq' (when jq does not already exists)"
+        rc=${RETURN_CODE_SUCCESS}
+        install_jq >/dev/null 2>&1 || rc=$?
+        assert_pass "${rc}"
+        printf "%s\n\n" "✅ PASS"
+      fi
+
+      # - Test installing it when jq already exists with default args (should be skipped)
+      printf "%s\n" "Running 'install_jq' (when jq already exists - install will be skipped)"
       rc=${RETURN_CODE_SUCCESS}
       install_jq >/dev/null 2>&1 || rc=$?
       assert_pass "${rc}"
       printf "%s\n\n" "✅ PASS"
 
-      # - Test 0 returned passing override args
+      # - Test installing exact version to /tmp even if jq already detected on $PATH
       printf "%s\n" "Running 'install_jq 1.8.1 /tmp false'"
       rc=${RETURN_CODE_SUCCESS}
       install_jq "1.8.1" "/tmp" "false" >/dev/null 2>&1 || rc=$?
