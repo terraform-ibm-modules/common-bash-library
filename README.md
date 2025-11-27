@@ -115,6 +115,77 @@ check_required_bins git jq
 
 <!------------------------------------------------>
 
+<details>
+  <summary>install_jq</summary>
+
+Installs jq binary.
+
+**Environment Variables:**
+- `VERBOSE`: If set to true, print verbose output (optional, defaults to false)
+
+**Arguments:**
+- `$1`: version of jq to install (optional, defaults to latest). Example format of valid version is "1.8.1"
+- `$2`: location to install jq to (optional, defaults to /usr/local/bin)
+- `$3`: if set to true, skips installation if jq is already detected (optional, defaults to true)
+- `$4`: the exact url to download jq from (optional, defaults to https://github.com/jqlang/jq/releases/latest/download/jq-${os}-${arch})
+
+**Returns:**
+- `0` - Success (jq installed successfully)
+- `1` - Failure (installation failed)
+- `2` - Failure (incorrect usage of function)
+
+**Usage:**
+```bash
+install_jq "latest" "/usr/local/bin" "true"
+```
+
+<!------------------------------------------------>
+
+</details>
+<details>
+  <summary>is_boolean</summary>
+
+Determine if value is a boolean.
+
+**Arguments:**
+- `$1`: value to check (required)
+
+**Returns:**
+- `0` - Success (value is a boolean - true, True, false or False)
+- `1` - Failure (value is not a boolean)
+- `2` - Failure (incorrect usage of function)
+
+**Usage:**
+```bash
+is_boolean "true"
+```
+</details>
+
+<!------------------------------------------------>
+
+<details>
+  <summary>return_mac_architecture</summary>
+
+Returns the architecture of the MacOS.
+
+**Arguments:** n/a
+
+**Returns:**
+- `0` - Success
+  - `"amd64"` - if the OS is macOS and the CPU is Intel
+  - `"arm64"` - if the OS is macOS and the CPU is Apple Silicon
+- `2` - Failure (Did not detect MacOS)
+
+**Usage:**
+```bash
+arch=$(return_mac_architecture)
+```
+</details>
+
+<!------------------------------------------------>
+
+<!------------------------------------------------>
+
 ## [ibmcloud/iam](ibmcloud/iam.sh)
 <details>
   <summary>generate_iam_bearer_token</summary>
