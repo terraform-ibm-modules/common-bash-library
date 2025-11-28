@@ -413,11 +413,7 @@ install_kubectl() {
   # download binary
   set +e
   if ! ${arg} curl --silent \
-    --connect-timeout 5 \
-    --max-time 10 \
     --retry 3 \
-    --retry-delay 2 \
-    --retry-connrefused \
     --fail \
     --show-error \
     --location \
