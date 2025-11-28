@@ -115,28 +115,28 @@ assert_fail() {
 # USAGE: check_env_vars PATH HOME
 #===============================================================
 check_env_vars() {
-    local missing=${RETURN_CODE_SUCCESS}
-    local verbose=${VERBOSE:-false}
+  local missing=${RETURN_CODE_SUCCESS}
+  local verbose=${VERBOSE:-false}
 
-    # Check if 1 or more arguments are provided
-    if [ $# -lt 1 ]; then
-      echo "Error: check_env_vars requires 1 or more arguments, but $# were provided" >&2
-      echo "Usage: check_env_vars <value>" >&2
-      exit ${RETURN_CODE_ERROR_INCORRECT_USAGE}
-    fi
+  # Check if 1 or more arguments are provided
+  if [ $# -lt 1 ]; then
+    echo "Error: check_env_vars requires 1 or more arguments, but $# were provided" >&2
+    echo "Usage: check_env_vars <value>" >&2
+    exit ${RETURN_CODE_ERROR_INCORRECT_USAGE}
+  fi
 
-    for var in "$@"; do
-      if [[ -z "${!var+x}" ]]; then
-        echo "❌ Environment variable '$var' is NOT set." >&2
-        missing=${RETURN_CODE_ERROR}
-      else
-        if [ "${verbose}" = true ]; then
-          echo "✅ $var is set."
-        fi
+  for var in "$@"; do
+    if [[ -z "${!var+x}" ]]; then
+      echo "❌ Environment variable '$var' is NOT set." >&2
+      missing=${RETURN_CODE_ERROR}
+    else
+      if [ "${verbose}" = true ]; then
+        echo "✅ $var is set."
       fi
-    done
+    fi
+  done
 
-    return ${missing}
+  return ${missing}
 }
 
 #===============================================================
@@ -169,11 +169,11 @@ check_required_bins() {
 
   for bin in "$@"; do
     if ! command -v "$bin" >/dev/null 2>&1; then
-        missing+=("$bin")
+      missing+=("$bin")
     fi
   done
 
-  if (( ${#missing[@]} )); then
+  if ((${#missing[@]})); then
     if [ "${verbose}" = true ]; then
       echo "Missing binaries: ${missing[*]}" >&2
     fi
@@ -336,8 +336,7 @@ install_jq() {
     --show-error \
     --location \
     --output "${location}/jq" \
-    "${link_to_binary}"
-  then
+    "${link_to_binary}"; then
     echo "Failed to download ${link_to_binary}"
     return ${RETURN_CODE_ERROR}
   fi
@@ -352,115 +351,200 @@ install_jq() {
   return ${RETURN_CODE_SUCCESS}
 }
 
+install_kubectl() {
+
+  local version=${1:-"latest"} # default to latest if not specified
+  local location=${2:-"/usr/local/bin"}
+  local skip_if_detected=${3:-"true"}
+  local link_to_binary=${4:-""}
+  local verbose=${VERBOSE:-false}
+
+  # Validate $3 arg is boolean
+  if ! is_boolean "${skip_if_detected}"; then
+    echo "Unsupported value detected for the 3rd argument. Only 'true' or 'false' is supported. Found: ${skip_if_detected}." >&2
+    return ${RETURN_CODE_ERROR_INCORRECT_USAGE}
+  fi
+
+  # return 0 if jq already installed and skip_if_detected is true
+  if [ "${skip_if_detected}" == "true" ]; then
+    if check_required_bins jq; then
+      if [ "${verbose}" = true ]; then
+        echo "Found jq already installed. Taking no action."
+      fi
+      return ${RETURN_CODE_SUCCESS}
+    fi
+  fi
+  # ensure curl is installed
+  check_required_bins curl || return $?
+
+  # strip "v" prefix if it exists in version
+  if [[ "${version}" == "latest" ]]; then
+    version=$(curl -L -s https://dl.k8s.io/release/stable.txt)
+  fi
+
+  # if no link to binary passed, determine the download link based on detected os and arch
+  if [ -z "${link_to_binary}" ]; then
+    # determine the OS and architecture
+    local os="linux"
+    local arch="amd64"
+    if [[ ${OSTYPE} == 'darwin'* ]]; then
+      arch=$(return_mac_architecture)
+    fi
+    # determine download link to binary
+    link_to_binary="https://dl.k8s.io/release/${version}/bin/${os}/${arch}"
+    # if [ "${version}" = "latest" ]; then
+    #   link_to_binary="https://github.com/jqlang/jq/releases/latest/download/jq-${os}-${arch}"
+    # fi
+  fi
+  if [ "${verbose}" = true ]; then
+    echo "Using download link: ${link_to_binary}"
+  fi
+
+  # use sudo if needed
+  local arg=""
+  if ! [ -w "${location}" ]; then
+    echo "No write permission to ${location}. Using sudo..."
+    arg=sudo
+  fi
+
+  # remove if already exists
+  ${arg} rm -f "${location}/kubectl"
+
+  # download binary
+  set +e
+  if ! ${arg} curl --silent \
+    --connect-timeout 5 \
+    --max-time 10 \
+    --retry 3 \
+    --retry-delay 2 \
+    --retry-connrefused \
+    --fail \
+    --show-error \
+    --location \
+    --output "${location}/kubectl" \
+    "${link_to_binary}"; then
+    echo "Failed to download ${link_to_binary}"
+    return ${RETURN_CODE_ERROR}
+  fi
+  set -e
+
+  # make executable
+  ${arg} chmod +x "${location}/kubectl"
+
+  if [ "${verbose}" = true ]; then
+    echo "Successfully completed installation to ${location}/kubectl"
+  fi
+  return ${RETURN_CODE_SUCCESS}
+}
 #===============================================================
 # UNIT TESTS
 #===============================================================
 
 _test() {
-    local make_api_calls="${MAKE_API_CALLS:-false}"
-    printf "%s\n\n" "Running tests.."
+  local make_api_calls="${MAKE_API_CALLS:-false}"
+  printf "%s\n\n" "Running tests.."
 
-    # check_env_vars
-    # -----------------------------------
-    # - Test 0 returned when variable set
-    printf "%s\n" "Running 'check_env_vars PATH HOME'"
+  # check_env_vars
+  # -----------------------------------
+  # - Test 0 returned when variable set
+  printf "%s\n" "Running 'check_env_vars PATH HOME'"
+  rc=${RETURN_CODE_SUCCESS}
+  check_env_vars PATH HOME >/dev/null 2>&1 || rc=$?
+  assert_pass "${rc}"
+  printf "%s\n\n" "✅ PASS"
+
+  # - Test non 0 returned when variable not set
+  printf "%s\n" "Running 'check_env_vars FGDFGDFGH'"
+  rc=${RETURN_CODE_SUCCESS}
+  check_env_vars FGDFGDFGH >/dev/null 2>&1 || rc=$?
+  assert_fail "${rc}"
+  printf "%s\n\n" "✅ PASS"
+
+  # check_required_bins
+  # -----------------------------------
+  # - Test 0 returned when binaries found
+  printf "%s\n" "Running 'check_env_vars echo'"
+  rc=${RETURN_CODE_SUCCESS}
+  check_required_bins echo >/dev/null 2>&1 || rc=$?
+  assert_pass "${rc}"
+  printf "%s\n\n" "✅ PASS"
+
+  # - Test non 0 returned when binaries not found
+  printf "%s\n" "Running 'check_env_vars dfdsfdsag'"
+  rc=${RETURN_CODE_SUCCESS}
+  check_required_bins dfdsfdsag >/dev/null 2>&1 || rc=$?
+  assert_fail "${rc}"
+  printf "%s\n\n" "✅ PASS"
+
+  # is_boolean
+  # -----------------------------------
+  # - Test valid booleans
+  for i in "true" "false" "True" "False"; do
+    printf "%s\n" "Running 'is_boolean $i'"
     rc=${RETURN_CODE_SUCCESS}
-    check_env_vars PATH HOME >/dev/null 2>&1 || rc=$?
+    is_boolean $i >/dev/null 2>&1 || rc=$?
     assert_pass "${rc}"
     printf "%s\n\n" "✅ PASS"
+  done
 
-    # - Test non 0 returned when variable not set
-    printf "%s\n" "Running 'check_env_vars FGDFGDFGH'"
-    rc=${RETURN_CODE_SUCCESS}
-    check_env_vars FGDFGDFGH >/dev/null 2>&1 || rc=$?
-    assert_fail "${rc}"
-    printf "%s\n\n" "✅ PASS"
+  # - Test non valid boolean
+  printf "%s\n" "Running 'is_boolean not_a_boolean'"
+  rc=${RETURN_CODE_SUCCESS}
+  is_boolean not_a_boolean >/dev/null 2>&1 || rc=$?
+  assert_fail "${rc}"
+  printf "%s\n\n" "✅ PASS"
 
-    # check_required_bins
-    # -----------------------------------
-    # - Test 0 returned when binaries found
-    printf "%s\n" "Running 'check_env_vars echo'"
-    rc=${RETURN_CODE_SUCCESS}
-    check_required_bins echo >/dev/null 2>&1 || rc=$?
-    assert_pass "${rc}"
-    printf "%s\n\n" "✅ PASS"
+  # install_jq
+  # -----------------------------------
+  if [ "${make_api_calls}" = true ]; then
+    # Check if jq already exists on $PATH
+    local jq_installed=true
+    check_required_bins jq || jq_installed=false
 
-    # - Test non 0 returned when binaries not found
-    printf "%s\n" "Running 'check_env_vars dfdsfdsag'"
-    rc=${RETURN_CODE_SUCCESS}
-    check_required_bins dfdsfdsag >/dev/null 2>&1 || rc=$?
-    assert_fail "${rc}"
-    printf "%s\n\n" "✅ PASS"
-
-    # is_boolean
-    # -----------------------------------
-    # - Test valid booleans
-    for i in "true" "false" "True" "False"; do
-      printf "%s\n" "Running 'is_boolean $i'"
-      rc=${RETURN_CODE_SUCCESS}
-      is_boolean $i >/dev/null 2>&1 || rc=$?
-      assert_pass "${rc}"
-      printf "%s\n\n" "✅ PASS"
-    done
-
-    # - Test non valid boolean
-    printf "%s\n" "Running 'is_boolean not_a_boolean'"
-    rc=${RETURN_CODE_SUCCESS}
-    is_boolean not_a_boolean >/dev/null 2>&1 || rc=$?
-    assert_fail "${rc}"
-    printf "%s\n\n" "✅ PASS"
-
-    # install_jq
-    # -----------------------------------
-    if [ "${make_api_calls}" = true ]; then
-      # Check if jq already exists on $PATH
-      local jq_installed=true
-      check_required_bins jq || jq_installed=false
-
-      # - Test installing jq using defaults (when it does not already exist)
-      if [ ${jq_installed} = false ]; then
-        printf "%s\n" "Running 'install_jq' (when jq does not already exists)"
-        rc=${RETURN_CODE_SUCCESS}
-        install_jq >/dev/null 2>&1 || rc=$?
-        assert_pass "${rc}"
-        printf "%s\n\n" "✅ PASS"
-      fi
-
-      # - Test installing it when jq already exists with default args (should be skipped)
-      printf "%s\n" "Running 'install_jq' (when jq already exists - install will be skipped)"
+    # - Test installing jq using defaults (when it does not already exist)
+    if [ ${jq_installed} = false ]; then
+      printf "%s\n" "Running 'install_jq' (when jq does not already exists)"
       rc=${RETURN_CODE_SUCCESS}
       install_jq >/dev/null 2>&1 || rc=$?
       assert_pass "${rc}"
       printf "%s\n\n" "✅ PASS"
-
-      # - Test installing exact version to /tmp even if jq already detected on $PATH
-      printf "%s\n" "Running 'install_jq 1.8.1 /tmp false'"
-      rc=${RETURN_CODE_SUCCESS}
-      install_jq "1.8.1" "/tmp" "false" >/dev/null 2>&1 || rc=$?
-      assert_pass "${rc}"
-      printf "%s\n\n" "✅ PASS"
     fi
 
-    # -----------------------------------
-    echo "✅ All tests passed!"
+    # - Test installing it when jq already exists with default args (should be skipped)
+    printf "%s\n" "Running 'install_jq' (when jq already exists - install will be skipped)"
+    rc=${RETURN_CODE_SUCCESS}
+    install_jq >/dev/null 2>&1 || rc=$?
+    assert_pass "${rc}"
+    printf "%s\n\n" "✅ PASS"
+
+    # - Test installing exact version to /tmp even if jq already detected on $PATH
+    printf "%s\n" "Running 'install_jq 1.8.1 /tmp false'"
+    rc=${RETURN_CODE_SUCCESS}
+    install_jq "1.8.1" "/tmp" "false" >/dev/null 2>&1 || rc=$?
+    assert_pass "${rc}"
+    printf "%s\n\n" "✅ PASS"
+  fi
+
+  # -----------------------------------
+  echo "✅ All tests passed!"
 }
 
 main() {
-    _test
+  _test
 }
 
 #===============================================================
 # Determine if the script is being sourced or executed (run).
 #===============================================================
 if [ "${BASH_SOURCE[0]}" = "$0" ]; then
-    # This script is being run.
-    __name__="__main__"
+  # This script is being run.
+  __name__="__main__"
 else
-    # This script is being sourced.
-    __name__="__source__"
+  # This script is being sourced.
+  __name__="__source__"
 fi
 
 # Only run `main` if this script is being **run**, NOT sourced (imported).
 if [ "$__name__" = "__main__" ]; then
-    main "$@"
+  main "$@"
 fi
