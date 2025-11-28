@@ -367,9 +367,9 @@ install_kubectl() {
 
   # return 0 if jq already installed and skip_if_detected is true
   if [ "${skip_if_detected}" == "true" ]; then
-    if check_required_bins jq; then
+    if check_required_bins kubectl; then
       if [ "${verbose}" = true ]; then
-        echo "Found jq already installed. Taking no action."
+        echo "Found kubectl already installed. Taking no action."
       fi
       return ${RETURN_CODE_SUCCESS}
     fi
@@ -391,7 +391,7 @@ install_kubectl() {
       arch=$(return_mac_architecture)
     fi
     # determine download link to binary
-    link_to_binary="https://dl.k8s.io/release/${version}/bin/${os}/${arch}"
+    link_to_binary="https://dl.k8s.io/release/${version}/bin/${os}/${arch}/kubectl"
     # if [ "${version}" = "latest" ]; then
     #   link_to_binary="https://github.com/jqlang/jq/releases/latest/download/jq-${os}-${arch}"
     # fi
