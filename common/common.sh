@@ -256,14 +256,14 @@ return_mac_architecture() {
 #   - $1: version of jq to install (optional, defaults to latest). Example format of valid version is "1.8.1".
 #   - $2: location to install jq to (optional, defaults to /usr/local/bin)
 #   - $3: if set to true, skips installation if jq is already detected (optional, defaults to true)
-#   - $4: the exact url to download jq from (optional, defaults to https://github.com/jqlang/jq/releases/latest/download/jq-${os}-${arch})
+#   - $4: the exact url to download jq from (optional, defaults to https://github.com/jqlang/jq/releases/latest/download/jq-<os>-<arch>)
 #
 # RETURNS:
 #   0 - Success (jq installation successful)
 #   1 - Failure (jq installation failed)
 #   2 - Failure (incorrect usage of function)
 #
-# USAGE: install_jq "latest" "/usr/local/bin" "true"
+# USAGE: install_jq "latest" "/usr/local/bin" "true" "https://github.com/jqlang/jq/releases/latest/download/jq-<os>-<arch>"
 #===============================================================
 install_jq() {
 
@@ -353,6 +353,107 @@ install_jq() {
 }
 
 #===============================================================
+# FUNCTION: install_kubectl
+# DESCRIPTION: Installs kubectl binary
+#
+# ENVIRONMENT VARIABLES:
+#   - VERBOSE: If set to true, print verbose output (optional, defaults to false)
+#
+# ARGUMENTS:
+#   - $1: version of kubectl to install (optional, defaults to current latest stable). Example format of valid version is "v1.34.2".
+#   - $2: location to install kubectl to (optional, defaults to /usr/local/bin)
+#   - $3: if set to true, skips installation of kubectl if already detected (optional, defaults to true)
+#   - $4: the exact url to download kubectl from (optional, defaults to https://dl.k8s.io/release/<version>/bin/<os>/<arch>/kubectl)
+#
+# RETURNS:
+#   0 - Success (kubectl installation successful)
+#   1 - Failure (kubectl installation failed)
+#   2 - Failure (incorrect usage of function)
+#
+# USAGE: kubectl "latest" "/usr/local/bin" "true" "https://dl.k8s.io/release/<version>/bin/<os>/<arch>/kubectl"
+#===============================================================
+install_kubectl() {
+
+  local version=${1:-"latest"}
+  local location=${2:-"/usr/local/bin"}
+  local skip_if_detected=${3:-"true"}
+  local link_to_binary=${4:-""}
+  local verbose=${VERBOSE:-false}
+
+  # Validate $3 arg is boolean
+  if ! is_boolean "${skip_if_detected}"; then
+    echo "Unsupported value detected for the 3rd argument. Only 'true' or 'false' is supported. Found: ${skip_if_detected}." >&2
+    return ${RETURN_CODE_ERROR_INCORRECT_USAGE}
+  fi
+
+  # return 0 if kubectl already installed and skip_if_detected is true
+  if [ "${skip_if_detected}" == "true" ]; then
+    if check_required_bins kubectl; then
+      if [ "${verbose}" = true ]; then
+        echo "Found kubectl already installed. Taking no action."
+      fi
+      return ${RETURN_CODE_SUCCESS}
+    fi
+  fi
+  # ensure curl is installed
+  check_required_bins curl || return $?
+  # if no link to binary passed, determine the download link based on detected os and arch
+  if [ -z "${link_to_binary}" ]; then
+    # determine the OS and architecture
+    local os="linux"
+    local arch="amd64"
+    if [[ ${OSTYPE} == 'darwin'* ]]; then
+      arch=$(return_mac_architecture)
+    fi
+    # determine download link to binary
+    link_to_binary="https://dl.k8s.io/release/${version}/bin/${os}/${arch}/kubectl"
+    if [ "${version}" = "latest" ]; then
+      link_to_binary="https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/${os}/${arch}/kubectl"
+    fi
+  fi
+  if [ "${verbose}" = true ]; then
+    echo "Using download link: ${link_to_binary}"
+  fi
+
+  # use sudo if needed
+  local arg=""
+  if ! [ -w "${location}" ]; then
+    echo "No write permission to ${location}. Using sudo..."
+    arg=sudo
+  fi
+
+  # remove if already exists
+  ${arg} rm -f "${location}/kubectl"
+
+  # download binary
+  set +e
+  if ! ${arg} curl --silent \
+    --connect-timeout 5 \
+    --max-time 10 \
+    --retry 3 \
+    --retry-delay 2 \
+    --retry-connrefused \
+    --fail \
+    --show-error \
+    --location \
+    --output "${location}/kubectl" \
+    "${link_to_binary}"
+  then
+    echo "Failed to download ${link_to_binary}"
+    return ${RETURN_CODE_ERROR}
+  fi
+  set -e
+
+  # make executable
+  ${arg} chmod +x "${location}/kubectl"
+
+  if [ "${verbose}" = true ]; then
+    echo "Successfully completed installation to ${location}/kubectl"
+  fi
+  return ${RETURN_CODE_SUCCESS}
+}
+
+#===============================================================
 # UNIT TESTS
 #===============================================================
 
@@ -437,6 +538,37 @@ _test() {
       printf "%s\n" "Running 'install_jq 1.8.1 /tmp false'"
       rc=${RETURN_CODE_SUCCESS}
       install_jq "1.8.1" "/tmp" "false" >/dev/null 2>&1 || rc=$?
+      assert_pass "${rc}"
+      printf "%s\n\n" "✅ PASS"
+    fi
+
+    # install_kubectl
+    # -----------------------------------
+    if [ "${make_api_calls}" = true ]; then
+      # Check if kubectl already exists on $PATH
+      local kubectl_installed=true
+      check_required_bins kubectl || kubectl_installed=false
+
+      # - Test installing kubectl using defaults (when it does not already exist)
+      if [ ${kubectl_installed} = false ]; then
+        printf "%s\n" "Running 'install_kubectl' (when kubectl does not already exists)"
+        rc=${RETURN_CODE_SUCCESS}
+        install_kubectl >/dev/null 2>&1 || rc=$?
+        assert_pass "${rc}"
+        printf "%s\n\n" "✅ PASS"
+      fi
+
+      # - Test installing it when kubectl already exists with default args (should be skipped)
+      printf "%s\n" "Running 'install_kubectl' (when kubectl already exists - install will be skipped)"
+      rc=${RETURN_CODE_SUCCESS}
+      install_kubectl >/dev/null 2>&1 || rc=$?
+      assert_pass "${rc}"
+      printf "%s\n\n" "✅ PASS"
+
+      # - Test installing exact version to /tmp even if kubectl already detected on $PATH
+      printf "%s\n" "Running 'install_kubectl v1.34.2 /tmp false'"
+      rc=${RETURN_CODE_SUCCESS}
+      install_kubectl "v1.34.2" "/tmp" "false" >/dev/null 2>&1 || rc=$?
       assert_pass "${rc}"
       printf "%s\n\n" "✅ PASS"
     fi
