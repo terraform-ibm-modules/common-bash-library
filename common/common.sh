@@ -454,6 +454,98 @@ install_kubectl() {
 }
 
 #===============================================================
+# FUNCTION: install_ibmcloud
+# DESCRIPTION: Installs IBM Cloud CLI (ibmcloud)
+#
+# ENVIRONMENT VARIABLES:
+#   - VERBOSE: If set to true, print verbose output (optional, defaults to false)
+#
+# ARGUMENTS:
+#   - $1: version of ibmcloud to install (optional, defaults to latest)
+#   - $2: location to install ibmcloud to (optional, defaults to /usr/local/bin)
+#   - $3: if set to true, skips installation if ibmcloud is already detected (optional, defaults to true)
+#   - $4: exact installer URL (optional, defaults to https://clis.cloud.ibm.com/install/linux)
+#
+# RETURNS:
+#   0 - Success (ibmcloud installation successful)
+#   1 - Failure (ibmcloud installation failed)
+#   2 - Failure (incorrect usage of function)
+#
+# USAGE: install_ibmcloud "latest" "/usr/local/bin" "true"
+#===============================================================
+install_ibmcloud() {
+
+  local version=${1:-"latest"}
+  local location=${2:-"/usr/local/bin"}
+  local skip_if_detected=${3:-"true"}
+  local link_to_installer=${4:-""}
+  local verbose=${VERBOSE:-false}
+
+  # Validate $3 arg is boolean
+  if ! is_boolean "${skip_if_detected}"; then
+    echo "Unsupported value detected for the 3rd argument. Only 'true' or 'false' is supported. Found: ${skip_if_detected}." >&2
+    return ${RETURN_CODE_ERROR_INCORRECT_USAGE}
+  fi
+
+  # return 0 if ibmcloud already installed and skip_if_detected is true
+  if [ "${skip_if_detected}" = "true" ]; then
+    if check_required_bins ibmcloud; then
+      if [ "${verbose}" = true ]; then
+        echo "Found ibmcloud already installed. Taking no action."
+      fi
+      return ${RETURN_CODE_SUCCESS}
+    fi
+  fi
+
+  # ensure curl is installed
+  check_required_bins curl || return $?
+
+  # determine installer link if not provided
+  if [ -z "${link_to_installer}" ]; then
+    link_to_installer="https://clis.cloud.ibm.com/install/linux"
+  fi
+
+  if [ "${verbose}" = true ]; then
+    echo "Using installer link: ${link_to_installer}"
+  fi
+
+  # use sudo if needed
+  local arg=""
+  if ! [ -w "${location}" ]; then
+    echo "No write permission to ${location}. Using sudo..."
+    arg=sudo
+  fi
+
+  # download and run installer
+  set +e
+  if ! ${arg} sh -c "
+    curl --silent \
+      --connect-timeout 5 \
+      --max-time 20 \
+      --retry 3 \
+      --retry-delay 2 \
+      --retry-connrefused \
+      --fail \
+      --show-error \
+      --location \
+      ${link_to_installer} | \
+    sh -s -- -b ${location} $( [ \"${version}\" != \"latest\" ] && echo \"${version}\" )
+  "
+  then
+    echo "Failed to install ibmcloud CLI"
+    return ${RETURN_CODE_ERROR}
+  fi
+  set -e
+
+  if [ "${verbose}" = true ]; then
+    echo "Successfully completed installation to ${location}/ibmcloud"
+  fi
+
+  return ${RETURN_CODE_SUCCESS}
+}
+
+
+#===============================================================
 # UNIT TESTS
 #===============================================================
 
@@ -569,6 +661,38 @@ _test() {
       printf "%s\n" "Running 'install_kubectl v1.34.2 /tmp false'"
       rc=${RETURN_CODE_SUCCESS}
       install_kubectl "v1.34.2" "/tmp" "false" >/dev/null 2>&1 || rc=$?
+      assert_pass "${rc}"
+      printf "%s\n\n" "✅ PASS"
+    fi
+
+        # install_ibmcloud
+    # -----------------------------------
+    if [ "${make_api_calls}" = true ]; then
+      # Check if ibmcloud already exists on $PATH
+      local ibmcloud_installed=true
+      check_required_bins ibmcloud || ibmcloud_installed=false
+
+      # - Test installing ibmcloud using defaults (when it does not already exist)
+      if [ ${ibmcloud_installed} = false ]; then
+        printf "%s\n" "Running 'install_ibmcloud' (when ibmcloud does not already exists)"
+        rc=${RETURN_CODE_SUCCESS}
+        install_ibmcloud >/dev/null 2>&1 || rc=$?
+        assert_pass "${rc}"
+        printf "%s\n\n" "✅ PASS"
+      fi
+
+      # - Test installing it when ibmcloud already exists with default args (should be skipped)
+      printf "%s\n" "Running 'install_ibmcloud' (when ibmcloud already exists - install will be skipped)"
+      rc=${RETURN_CODE_SUCCESS}
+      install_ibmcloud >/dev/null 2>&1 || rc=$?
+      assert_pass "${rc}"
+      printf "%s\n\n" "✅ PASS"
+
+      
+      # - Test installing to /tmp even if ibmcloud already detected on $PATH
+      printf "%s\n" "Running 'install_ibmcloud latest /tmp false'"
+      rc=${RETURN_CODE_SUCCESS}
+      install_ibmcloud "latest" "/tmp" "false" >/dev/null 2>&1 || rc=$?
       assert_pass "${rc}"
       printf "%s\n\n" "✅ PASS"
     fi
