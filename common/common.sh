@@ -529,7 +529,7 @@ install_ibmcloud() {
       --show-error \
       --location \
       ${link_to_installer} | \
-    sh -s -- -b ${location} $( [ \"${version}\" != \"latest\" ] && echo \"${version}\" )
+    sh -s -- -b ${location} $( [ \""${version}"\" != \"latest\" ] && echo \""${version}"\" )
   "
   then
     echo "Failed to install ibmcloud CLI"
@@ -688,7 +688,7 @@ _test() {
       assert_pass "${rc}"
       printf "%s\n\n" "✅ PASS"
 
-      
+
       # - Test installing to /tmp even if ibmcloud already detected on $PATH
       printf "%s\n" "Running 'install_ibmcloud latest /tmp false'"
       rc=${RETURN_CODE_SUCCESS}
