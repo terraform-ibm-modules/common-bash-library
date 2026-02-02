@@ -2,7 +2,7 @@
 
 set -eo pipefail
 
-source ../common/common.sh
+source ./common/common.sh
 
 #===============================================================
 # GLOBAL VARIABLES
