@@ -141,6 +141,55 @@ install_jq "latest" "/usr/local/bin" "true"
 
 <!------------------------------------------------>
 
+<details>
+  <summary>install_kubectl</summary>
+
+Installs the kubectl binary.
+
+**Environment Variables:**
+- `VERBOSE`: If set to true, print verbose output (optional, defaults to false)
+
+**Arguments:**
+- `$1`: version of kubectl to install (optional, defaults to current latest stable). Example format: "v1.34.2"
+- `$2`: location to install kubectl (optional, defaults to /usr/local/bin)
+- `$3`: if set to true, skips installation if kubectl is already detected (optional, defaults to true)
+- `$4`: the exact URL to download kubectl from (optional, defaults to https://dl.k8s.io/release/<version>/bin/<os>/<arch>/kubectl)
+
+**Returns:**
+- `0` - Success (kubectl installation successful)
+- `1` - Failure (kubectl installation failed)
+- `2` - Failure (incorrect usage of function)
+
+**Usage:**
+```bash
+install_kubectl "latest" "/usr/local/bin" "true" "https://dl.k8s.io/release/<version>/bin/<os>/<arch>/kubectl"
+
+```
+<!------------------------------------------------>
+<details>
+  <summary>install_ibmcloud</summary>
+
+Installs the IBM Cloud CLI (ibmcloud).
+
+**Environment Variables:**
+- `VERBOSE`: If set to true, prints verbose output (optional, defaults to false)
+
+**Arguments:**
+- `$1`: version of IBM Cloud CLI to install (optional, defaults to "latest"). Example format: `"3.32.0"`
+- `$2`: location to install ibmcloud binary (optional, defaults to /tmp)
+- `$3`: skip installation if ibmcloud is already detected (optional, defaults to "true"). Accepts `"true"` or `"false"`
+- `$4`: exact installer URL (optional, defaults to `https://download.clis.cloud.ibm.com/ibm-cloud-cli-dn/latest/binaries/IBM_Cloud_CLI_${os}_${arch}.tgz`)
+
+**Returns:**
+- `0` - Success (IBM Cloud CLI installed successfully or skipped if already present)
+- `1` - Failure (installation failed)
+- `2` - Failure (incorrect usage of function, e.g., invalid boolean for $3)
+
+**Usage:**
+```bash
+install_ibmcloud "latest" "/usr/local/bin" "true" "https://download.clis.cloud.ibm.com/ibm-cloud-cli-dn/latest/binaries/IBM_Cloud_CLI_${os}_${arch}.tgz"
+```
+<!------------------------------------------------>
 </details>
 <details>
   <summary>is_boolean</summary>

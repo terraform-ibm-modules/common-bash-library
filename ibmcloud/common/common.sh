@@ -475,10 +475,10 @@ install_kubectl() {
 #===============================================================
 install_ibmcloud() {
 
-  local version=${1:-"latest"}
-  local location=${2:-"/usr/local/bin"}
+  local version=${1:-"latest"} # default to latest if not specified
+  local location=${2:-"/tmp"}
   local skip_if_detected=${3:-"true"}
-  local link_to_installer=${4:-""}
+  local link_to_binary=${4:-""}
   local verbose=${VERBOSE:-false}
 
   # Validate $3 arg is boolean
@@ -497,16 +497,38 @@ install_ibmcloud() {
     fi
   fi
 
-  # ensure curl is installed
-  check_required_bins curl || return $?
+  # ensure curl, tar, gzip are installed
+  check_required_bins curl tar gzip || return $?
 
-  # determine installer link if not provided
-  if [ -z "${link_to_installer}" ]; then
-    link_to_installer="https://clis.cloud.ibm.com/install/linux"
+  # strip "v" prefix if it exists in version
+  if [[ "${version}" == "v"* ]]; then
+    version="${version#v}"
+  fi
+
+  # if no link to binary passed, determine the download link based on detected os and arch
+  if [ -z "${link_to_binary}" ]; then
+    # determine the OS
+    local os="linux"
+    if [[ ${OSTYPE} == 'darwin'* ]]; then
+      os="macos"
+    fi
+
+    # determine the architecture
+    local arch="amd64"
+    if [[ ${OSTYPE} == 'darwin'* ]]; then
+      arch=$(return_mac_architecture)
+    fi
+
+    # determine download link
+    if [ "${version}" = "latest" ]; then
+      link_to_binary="https://download.clis.cloud.ibm.com/ibm-cloud-cli-dn/latest/binaries/IBM_Cloud_CLI_${os}_${arch}.tgz"
+    else
+      link_to_binary="https://download.clis.cloud.ibm.com/ibm-cloud-cli-dn/${version}/binaries/IBM_Cloud_CLI_${version}_${os}_${arch}.tgz"
+    fi
   fi
 
   if [ "${verbose}" = true ]; then
-    echo "Using installer link: ${link_to_installer}"
+    echo "Using download link: ${link_to_binary}"
   fi
 
   # use sudo if needed
@@ -516,26 +538,37 @@ install_ibmcloud() {
     arg=sudo
   fi
 
-  # download and run installer
+  # remove if already exists
+  ${arg} rm -f "${location}/ibmcloud"
+
+  # create temp directory
+  local tmp_dir
+  tmp_dir=$(mktemp -d)
+
+  # download and extract
   set +e
-  if ! ${arg} sh -c "
-    curl --silent \
-      --connect-timeout 5 \
-      --max-time 20 \
-      --retry 3 \
-      --retry-delay 2 \
-      --retry-connrefused \
-      --fail \
-      --show-error \
-      --location \
-      ${link_to_installer} | \
-    sh -s -- -b ${location} $( [ \""${version}"\" != \"latest\" ] && echo \""${version}"\" )
-  "
+  if ! curl --silent \
+    --connect-timeout 5 \
+    --max-time 20 \
+    --retry 3 \
+    --retry-delay 2 \
+    --retry-connrefused \
+    --fail \
+    --show-error \
+    --location \
+    "${link_to_binary}" | tar -xz -C "${tmp_dir}"
   then
-    echo "Failed to install ibmcloud CLI"
+    echo "Failed to download ${link_to_binary}"
+    rm -rf "${tmp_dir}"
     return ${RETURN_CODE_ERROR}
   fi
   set -e
+
+  # move binary
+  ${arg} mv "${tmp_dir}/IBM_Cloud_CLI/ibmcloud" "${location}/ibmcloud"
+  ${arg} chmod +x "${location}/ibmcloud"
+
+  rm -rf "${tmp_dir}"
 
   if [ "${verbose}" = true ]; then
     echo "Successfully completed installation to ${location}/ibmcloud"
@@ -665,7 +698,7 @@ _test() {
       printf "%s\n\n" "✅ PASS"
     fi
 
-        # install_ibmcloud
+    # install_ibmcloud
     # -----------------------------------
     if [ "${make_api_calls}" = true ]; then
       # Check if ibmcloud already exists on $PATH
@@ -688,17 +721,18 @@ _test() {
       assert_pass "${rc}"
       printf "%s\n\n" "✅ PASS"
 
-
-      # - Test installing to /tmp even if ibmcloud already detected on $PATH
-      printf "%s\n" "Running 'install_ibmcloud latest /tmp false'"
+      # - Test installing exact version to /tmp even if ibmcloud already detected on $PATH
+      printf "%s\n" "Running 'install_ibmcloud 2.41.0 /tmp false'"
       rc=${RETURN_CODE_SUCCESS}
-      install_ibmcloud "latest" "/tmp" "false" >/dev/null 2>&1 || rc=$?
+      install_ibmcloud "2.41.0" "/tmp" "false" >/dev/null 2>&1 || rc=$?
       assert_pass "${rc}"
       printf "%s\n\n" "✅ PASS"
     fi
 
-    # -----------------------------------
-    echo "✅ All tests passed!"
+
+# -----------------------------------
+echo "✅ All tests passed!"
+
 }
 
 main() {
