@@ -475,7 +475,7 @@ install_kubectl() {
 #===============================================================
 install_ibmcloud() {
 
-  local version=${1:-"2.41.0"} # default to latest if not specified
+  local version=${1:-"2.41.0"} # IBM Cloud CLI version (required or defaults to a pinned version, e.g. 2.41.0) NOTE: "latest" is not supported
   local location=${2:-"/tmp"}
   local skip_if_detected=${3:-"true"}
   local link_to_binary=${4:-""}
@@ -520,11 +520,8 @@ install_ibmcloud() {
     fi
 
     # determine download link
-    if [ "${version}" = "latest" ]; then
-      link_to_binary="https://download.clis.cloud.ibm.com/ibm-cloud-cli-dn/latest/binaries/IBM_Cloud_CLI_${os}_${arch}.tgz"
-    else
-      link_to_binary="https://download.clis.cloud.ibm.com/ibm-cloud-cli-dn/${version}/binaries/IBM_Cloud_CLI_${version}_${os}_${arch}.tgz"
-    fi
+    link_to_binary="https://download.clis.cloud.ibm.com/ibm-cloud-cli-dn/${version}/binaries/IBM_Cloud_CLI_${version}_${os}_${arch}.tgz"
+  
   fi
 
   if [ "${verbose}" = true ]; then
