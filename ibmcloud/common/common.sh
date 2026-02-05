@@ -461,7 +461,7 @@ install_kubectl() {
 #   - VERBOSE: If set to true, print verbose output (optional, defaults to false)
 #
 # ARGUMENTS:
-#   - $1: version of ibmcloud to install (optional, defaults to latest)
+#   - $1: version of ibmcloud to install (optional, defaults to a pinned version, e.g. 2.41.0)
 #   - $2: location to install ibmcloud to (optional, defaults to /usr/local/bin)
 #   - $3: if set to true, skips installation if ibmcloud is already detected (optional, defaults to true)
 #   - $4: exact installer URL (optional, defaults to https://download.clis.cloud.ibm.com/ibm-cloud-cli-dn/<version>/binaries/IBM_Cloud_CLI_<os>_<arch>.tgz)
@@ -471,7 +471,7 @@ install_kubectl() {
 #   1 - Failure (ibmcloud installation failed)
 #   2 - Failure (incorrect usage of function)
 #
-# USAGE: install_ibmcloud "latest" "/usr/local/bin" "true"
+# USAGE: install_ibmcloud "2.41.0" "/usr/local/bin" "true"
 #===============================================================
 install_ibmcloud() {
 
@@ -521,7 +521,7 @@ install_ibmcloud() {
 
     # determine download link
     link_to_binary="https://download.clis.cloud.ibm.com/ibm-cloud-cli-dn/${version}/binaries/IBM_Cloud_CLI_${version}_${os}_${arch}.tgz"
-  
+
   fi
 
   if [ "${verbose}" = true ]; then
