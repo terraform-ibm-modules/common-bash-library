@@ -178,7 +178,7 @@ Installs the IBM Cloud CLI (ibmcloud).
 - `$1`: version of IBM Cloud CLI to install (optional, defaults to a pinned version, e.g. 2.41.0). Example format: `"3.32.0"`
 - `$2`: location to install ibmcloud binary (optional, defaults to /tmp)
 - `$3`: skip installation if ibmcloud is already detected (optional, defaults to "true"). Accepts `"true"` or `"false"`
-- `$4`: exact installer URL (optional, defaults to `https://download.clis.cloud.ibm.com/ibm-cloud-cli-dn/<version>/binaries/IBM_Cloud_CLI_${os}_${arch}.tgz`)
+- `$4`: exact installer URL (optional, defaults to `https://download.clis.cloud.ibm.com/ibm-cloud-cli-dn/${version}/binaries/IBM_Cloud_CLI_${version}_${os}_${arch}.tgz`)
 
 **Returns:**
 - `0` - Success (IBM Cloud CLI installed successfully or skipped if already present)
@@ -187,7 +187,7 @@ Installs the IBM Cloud CLI (ibmcloud).
 
 **Usage:**
 ```bash
-install_ibmcloud "2.41.0" "/usr/local/bin" "true" "https://download.clis.cloud.ibm.com/ibm-cloud-cli-dn/<version>/binaries/IBM_Cloud_CLI_${os}_${arch}.tgz"
+install_ibmcloud "2.41.0" "/usr/local/bin" "true" "https://download.clis.cloud.ibm.com/ibm-cloud-cli-dn/${version}/binaries/IBM_Cloud_CLI_${version}_${os}_${arch}.tgz"
 ```
 <!------------------------------------------------>
 </details>
