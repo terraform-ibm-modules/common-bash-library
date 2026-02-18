@@ -210,6 +210,30 @@ arch=$(return_mac_architecture)
 
 <!------------------------------------------------>
 
+## [ibmcloud/iam](ibmcloud/iam.sh)
+<details>
+  <summary>generate_iam_bearer_token</summary>
+
+Generates an IBM Cloud IAM bearer token from an API key.
+
+**Environment Variables:**
+- `IBMCLOUD_API_KEY`: IBM Cloud API key (required)
+- `IBMCLOUD_IAM_API_ENDPOINT`: IBM Cloud IAM API endpoint (optional, defaults to https://iam.cloud.ibm.com)
+
+**Arguments:** n/a
+
+**Returns:**
+- `0` - Success (token printed to stdout)
+- `1` - Failure (error message printed to stderr)
+
+**Usage:**
+```bash
+IBMCLOUD_API_KEY=XXX; token=$(generate_iam_bearer_token)
+```
+</details>
+
+<!------------------------------------------------>
+
 ## [ibmcloud/cli](ibmcloud/cli.sh)
 <details>
   <summary>install_ibmcloud</summary>
@@ -236,31 +260,7 @@ Installs the IBM Cloud CLI (ibmcloud).
 install_ibmcloud
 
 # Install specific version
-install_ibmcloud "latest" "/usr/local/bin" "true"
-```
-</details>
-
-<!------------------------------------------------>
-
-## [ibmcloud/iam](ibmcloud/iam.sh)
-<details>
-  <summary>generate_iam_bearer_token</summary>
-
-Generates an IBM Cloud IAM bearer token from an API key.
-
-**Environment Variables:**
-- `IBMCLOUD_API_KEY`: IBM Cloud API key (required)
-- `IBMCLOUD_IAM_API_ENDPOINT`: IBM Cloud IAM API endpoint (optional, defaults to https://iam.cloud.ibm.com)
-
-**Arguments:** n/a
-
-**Returns:**
-- `0` - Success (token printed to stdout)
-- `1` - Failure (error message printed to stderr)
-
-**Usage:**
-```bash
-IBMCLOUD_API_KEY=XXX; token=$(generate_iam_bearer_token)
+install_ibmcloud "2.41.0" "/usr/local/bin" "true"
 ```
 </details>
 
