@@ -2,7 +2,11 @@
 
 set -eo pipefail
 
-source ../common/common.sh
+# Get the directory of this script
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Source common functions
+source "${SCRIPT_DIR}/../common/common.sh"
 
 #===============================================================
 # GLOBAL VARIABLES

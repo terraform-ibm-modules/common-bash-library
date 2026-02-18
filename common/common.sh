@@ -574,7 +574,7 @@ _test() {
     fi
 
     # -----------------------------------
-    echo "✅ All tests passed!"
+echo "✅ All tests passed!"
 }
 
 main() {

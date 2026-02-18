@@ -138,10 +138,36 @@ Installs jq binary.
 ```bash
 install_jq "latest" "/usr/local/bin" "true"
 ```
+</details>
 
 <!------------------------------------------------>
 
+<details>
+  <summary>install_kubectl</summary>
+
+Installs the kubectl binary.
+
+**Environment Variables:**
+- `VERBOSE`: If set to true, print verbose output (optional, defaults to false)
+
+**Arguments:**
+- `$1`: version of kubectl to install (optional, defaults to current latest stable). Example format: "v1.34.2"
+- `$2`: location to install kubectl (optional, defaults to /usr/local/bin)
+- `$3`: if set to true, skips installation if kubectl is already detected (optional, defaults to true)
+- `$4`: the exact URL to download kubectl from (optional, defaults to https://dl.k8s.io/release/<version>/bin/<os>/<arch>/kubectl)
+
+**Returns:**
+- `0` - Success (kubectl installation successful)
+- `1` - Failure (kubectl installation failed)
+- `2` - Failure (incorrect usage of function)
+
+**Usage:**
+```bash
+install_kubectl "latest" "/usr/local/bin" "true"
+```
 </details>
+
+<!------------------------------------------------>
 <details>
   <summary>is_boolean</summary>
 
@@ -184,8 +210,6 @@ arch=$(return_mac_architecture)
 
 <!------------------------------------------------>
 
-<!------------------------------------------------>
-
 ## [ibmcloud/iam](ibmcloud/iam.sh)
 <details>
   <summary>generate_iam_bearer_token</summary>
@@ -210,15 +234,48 @@ IBMCLOUD_API_KEY=XXX; token=$(generate_iam_bearer_token)
 
 <!------------------------------------------------>
 
+## [ibmcloud/cli](ibmcloud/cli.sh)
+<details>
+  <summary>install_ibmcloud</summary>
+
+Installs the IBM Cloud CLI (ibmcloud).
+
+**Environment Variables:**
+- `VERBOSE`: If set to true, prints verbose output (optional, defaults to false)
+
+**Arguments:**
+- `$1`: version of IBM Cloud CLI to install (optional, defaults to "latest"). Example format: `"2.41.0"` or `"latest"`
+- `$2`: location to install ibmcloud binary (optional, defaults to /tmp)
+- `$3`: skip installation if ibmcloud is already detected (optional, defaults to "true"). Accepts `"true"` or `"false"`
+- `$4`: exact installer URL (optional, overrides automatic URL construction)
+
+**Returns:**
+- `0` - Success (IBM Cloud CLI installed successfully or skipped if already present)
+- `1` - Failure (installation failed)
+- `2` - Failure (incorrect usage of function, e.g., invalid boolean for $3)
+
+**Usage:**
+```bash
+# Install latest version
+install_ibmcloud
+
+# Install specific version
+install_ibmcloud "2.41.0" "/usr/local/bin" "true"
+```
+</details>
+
+<!------------------------------------------------>
+
 ## Usage
 
 ### Sourcing the Library
 
-To use these functions in your bash scripts, source the library:
+To use functions from this library, source the desired module(s):-
 
 ```bash
-source /path/to/common.sh
+source /path/to/common-bash-library/<module>/<file>.sh
 ```
+
 
 ### Running Tests
 
