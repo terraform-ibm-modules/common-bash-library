@@ -270,7 +270,7 @@ install_ibmcloud "2.41.0" "/usr/local/bin" "true"
 
 ### Sourcing the Library
 
-To use functions from this library, source the desired module(s):
+To use functions from this library, source the desired module(s):-
 
 ```bash
 source /path/to/common-bash-library/<module>/<file>.sh
