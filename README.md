@@ -236,7 +236,7 @@ Installs the IBM Cloud CLI (ibmcloud).
 install_ibmcloud
 
 # Install specific version
-install_ibmcloud "2.41.0" "/usr/local/bin" "true"
+install_ibmcloud "latest" "/usr/local/bin" "true"
 ```
 </details>
 
