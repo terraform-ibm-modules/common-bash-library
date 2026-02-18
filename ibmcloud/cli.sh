@@ -181,7 +181,7 @@ install_ibmcloud() {
 #===============================================================
 _test() {
     local make_api_calls="${MAKE_API_CALLS:-false}"
-    printf "%s\n\n" "Running tests for ibmcloud/cli.sh..."
+    printf "%s\n\n" "Running tests.."
 
     # install_ibmcloud
     # -----------------------------------
