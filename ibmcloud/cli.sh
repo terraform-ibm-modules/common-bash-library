@@ -82,14 +82,14 @@ install_ibmcloud() {
       | sed -E 's/.*"v?([^"]+)".*/\1/')
     set -e
 
-    # Fallback to pinned version if fetch fails
+    # Return error if fetch fails
     if [ -z "${version}" ] || [ "${version}" = "null" ]; then
-      echo "Warning: Failed to fetch latest version from GitHub. Using fallback version 2.41.0" >&2
-      version="2.41.0"
-    else
-      if [ "${verbose}" = true ]; then
-        echo "Latest version determined: ${version}"
-      fi
+      echo "Error: Failed to fetch latest version from GitHub API. Please try again later, or specify an explicit version instead of 'latest'. Example: install_ibmcloud '2.41.0' '/usr/local/bin' 'true'" >&2
+      return ${RETURN_CODE_ERROR}
+    fi
+
+    if [ "${verbose}" = true ]; then
+      echo "Latest version determined: ${version}"
     fi
   fi
 

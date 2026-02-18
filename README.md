@@ -138,6 +138,7 @@ Installs jq binary.
 ```bash
 install_jq "latest" "/usr/local/bin" "true"
 ```
+</details>
 
 <!------------------------------------------------>
 
@@ -162,45 +163,11 @@ Installs the kubectl binary.
 
 **Usage:**
 ```bash
-install_kubectl "latest" "/usr/local/bin" "true" "https://dl.k8s.io/release/<version>/bin/<os>/<arch>/kubectl"
-
+install_kubectl "latest" "/usr/local/bin" "true"
 ```
-<!------------------------------------------------>
-<details>
-  <summary>install_ibmcloud</summary>
-
-Installs the IBM Cloud CLI (ibmcloud).
-
-**Location:**
-This function is defined in `ibmcloud/cli.sh`. To use it, source the file:
-```bash
-source ibmcloud/cli.sh
-```
-
-**Environment Variables:**
-- `VERBOSE`: If set to true, prints verbose output (optional, defaults to false)
-
-**Arguments:**
-- `$1`: version of IBM Cloud CLI to install (optional, defaults to "latest"). Example format: `"2.41.0"` or `"latest"`
-- `$2`: location to install ibmcloud binary (optional, defaults to /tmp)
-- `$3`: skip installation if ibmcloud is already detected (optional, defaults to "true"). Accepts `"true"` or `"false"`
-- `$4`: exact installer URL (optional, overrides automatic URL construction)
-
-**Returns:**
-- `0` - Success (IBM Cloud CLI installed successfully or skipped if already present)
-- `1` - Failure (installation failed)
-- `2` - Failure (incorrect usage of function, e.g., invalid boolean for $3)
-
-**Usage:**
-```bash
-# Install latest version
-install_ibmcloud
-
-# Install specific version
-install_ibmcloud "2.41.0" "/usr/local/bin" "true"
-```
-<!------------------------------------------------>
 </details>
+
+<!------------------------------------------------>
 <details>
   <summary>is_boolean</summary>
 
@@ -243,6 +210,36 @@ arch=$(return_mac_architecture)
 
 <!------------------------------------------------>
 
+## [ibmcloud/cli](ibmcloud/cli.sh)
+<details>
+  <summary>install_ibmcloud</summary>
+
+Installs the IBM Cloud CLI (ibmcloud).
+
+**Environment Variables:**
+- `VERBOSE`: If set to true, prints verbose output (optional, defaults to false)
+
+**Arguments:**
+- `$1`: version of IBM Cloud CLI to install (optional, defaults to "latest"). Example format: `"2.41.0"` or `"latest"`
+- `$2`: location to install ibmcloud binary (optional, defaults to /tmp)
+- `$3`: skip installation if ibmcloud is already detected (optional, defaults to "true"). Accepts `"true"` or `"false"`
+- `$4`: exact installer URL (optional, overrides automatic URL construction)
+
+**Returns:**
+- `0` - Success (IBM Cloud CLI installed successfully or skipped if already present)
+- `1` - Failure (installation failed)
+- `2` - Failure (incorrect usage of function, e.g., invalid boolean for $3)
+
+**Usage:**
+```bash
+# Install latest version
+install_ibmcloud
+
+# Install specific version
+install_ibmcloud "2.41.0" "/usr/local/bin" "true"
+```
+</details>
+
 <!------------------------------------------------>
 
 ## [ibmcloud/iam](ibmcloud/iam.sh)
@@ -273,11 +270,23 @@ IBMCLOUD_API_KEY=XXX; token=$(generate_iam_bearer_token)
 
 ### Sourcing the Library
 
-To use these functions in your bash scripts, source the library:
+To use the common functions in your bash scripts, source the library:
 
 ```bash
-source /path/to/common.sh
+source /path/to/common/common.sh
 ```
+
+For IBM Cloud specific functions, source the respective modules:
+
+```bash
+# For IBM Cloud CLI functions
+source /path/to/ibmcloud/cli.sh
+
+# For IBM Cloud IAM functions
+source /path/to/ibmcloud/iam.sh
+```
+
+Note: The ibmcloud modules automatically source `common/common.sh`, so you don't need to source it separately when using ibmcloud functions.
 
 ### Running Tests
 
