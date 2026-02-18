@@ -270,23 +270,12 @@ install_ibmcloud "2.41.0" "/usr/local/bin" "true"
 
 ### Sourcing the Library
 
-To use the common functions in your bash scripts, source the library:
+To use functions from this library, source the desired module(s):
 
 ```bash
-source /path/to/common/common.sh
+source /path/to/common-bash-library/<module>/<file>.sh
 ```
 
-For IBM Cloud specific functions, source the respective modules:
-
-```bash
-# For IBM Cloud CLI functions
-source /path/to/ibmcloud/cli.sh
-
-# For IBM Cloud IAM functions
-source /path/to/ibmcloud/iam.sh
-```
-
-Note: The ibmcloud modules automatically source `common/common.sh`, so you don't need to source it separately when using ibmcloud functions.
 
 ### Running Tests
 
