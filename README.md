@@ -171,14 +171,20 @@ install_kubectl "latest" "/usr/local/bin" "true" "https://dl.k8s.io/release/<ver
 
 Installs the IBM Cloud CLI (ibmcloud).
 
+**Location:**
+This function is defined in `ibmcloud/cli.sh`. To use it, source the file:
+```bash
+source ibmcloud/cli.sh
+```
+
 **Environment Variables:**
 - `VERBOSE`: If set to true, prints verbose output (optional, defaults to false)
 
 **Arguments:**
-- `$1`: version of IBM Cloud CLI to install (optional, defaults to a pinned version, e.g. 2.41.0). Example format: `"3.32.0"`
+- `$1`: version of IBM Cloud CLI to install (optional, defaults to "latest"). Example format: `"2.41.0"` or `"latest"`
 - `$2`: location to install ibmcloud binary (optional, defaults to /tmp)
 - `$3`: skip installation if ibmcloud is already detected (optional, defaults to "true"). Accepts `"true"` or `"false"`
-- `$4`: exact installer URL (optional, defaults to `https://download.clis.cloud.ibm.com/ibm-cloud-cli-dn/${version}/binaries/IBM_Cloud_CLI_${version}_${os}_${arch}.tgz`)
+- `$4`: exact installer URL (optional, overrides automatic URL construction)
 
 **Returns:**
 - `0` - Success (IBM Cloud CLI installed successfully or skipped if already present)
@@ -187,7 +193,11 @@ Installs the IBM Cloud CLI (ibmcloud).
 
 **Usage:**
 ```bash
-install_ibmcloud "2.41.0" "/usr/local/bin" "true" "https://download.clis.cloud.ibm.com/ibm-cloud-cli-dn/${version}/binaries/IBM_Cloud_CLI_${version}_${os}_${arch}.tgz"
+# Install latest version
+install_ibmcloud
+
+# Install specific version
+install_ibmcloud "2.41.0" "/usr/local/bin" "true"
 ```
 <!------------------------------------------------>
 </details>
