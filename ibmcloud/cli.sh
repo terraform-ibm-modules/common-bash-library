@@ -177,6 +177,182 @@ install_ibmcloud() {
 }
 
 #===============================================================
+# FUNCTION: install_ibmcloud_plugins
+# DESCRIPTION: Installs multiple IBM Cloud CLI plugins from an array
+#
+# ENVIRONMENT VARIABLES:
+#   - VERBOSE: If set to true, print verbose output (optional, defaults to false)
+#
+# ARGUMENTS:
+#   - $1: array name containing plugin names (required). Pass array name without $
+#   - $2: plugin version to install for all plugins (optional, defaults to latest)
+#   - $3: custom directory for plugin installation (optional, uses default if not specified)
+#   - $4: if set to true, skips installation if plugin is already installed (optional, defaults to true)
+#
+# RETURNS:
+#   0 - Success (all plugins installed successfully)
+#   1 - Failure (one or more plugins failed to install)
+#   2 - Failure (incorrect usage of function)
+#
+# USAGE:
+#   list=("code-engine" "container-service" "cloud-object-storage")
+#   install_ibmcloud_plugins list "latest" "/custom/path" "true"
+#===============================================================
+install_ibmcloud_plugins() {
+
+  local array_name=${1:-""}
+  local version=${2:-"latest"}
+  local location=${3:-""}
+  local skip_if_detected=${4:-"true"}
+  local verbose=${VERBOSE:-false}
+
+  # Validate array_name is provided
+  if [ -z "${array_name}" ]; then
+    echo "Error: Array name is required as the first argument" >&2
+    return ${RETURN_CODE_ERROR_INCORRECT_USAGE}
+  fi
+
+  # Validate $4 arg is boolean
+  if ! is_boolean "${skip_if_detected}"; then
+    echo "Unsupported value detected for the 4th argument. Only 'true' or 'false' is supported. Found: ${skip_if_detected}." >&2
+    return ${RETURN_CODE_ERROR_INCORRECT_USAGE}
+  fi
+
+  # ensure ibmcloud is installed
+  check_required_bins ibmcloud || return $?
+
+  # Get array by name using eval (compatible with bash 3.2+)
+  eval "local plugins_array=(\"\${${array_name}[@]}\")"
+
+  # Validate array has elements
+  if [ ${#plugins_array[@]} -eq 0 ]; then
+    echo "Error: Plugin array is empty" >&2
+    return ${RETURN_CODE_ERROR_INCORRECT_USAGE}
+  fi
+
+  # Set custom plugin directory if specified
+  local original_ibmcloud_home=""
+  if [ -n "${location}" ]; then
+    original_ibmcloud_home="${IBMCLOUD_HOME:-}"
+    export IBMCLOUD_HOME="${location}"
+    mkdir -p "${location}"
+    
+    if [ "${verbose}" = true ]; then
+      echo "Using custom IBM Cloud home directory: ${location}"
+    fi
+  fi
+
+  if [ "${verbose}" = true ]; then
+    echo "Installing IBM Cloud CLI plugins: ${plugins_array[*]}"
+    if [ "${version}" != "latest" ]; then
+      echo "Version: ${version}"
+    fi
+  fi
+
+  # Track installation results
+  local failed_plugins=()
+  local installed_plugins=()
+  local skipped_plugins=()
+
+  # Install each plugin
+  for plugin_name in "${plugins_array[@]}"; do
+    if [ "${verbose}" = true ]; then
+      echo ""
+      echo "Processing plugin: ${plugin_name}"
+    fi
+
+    # Check if plugin is already installed
+    if [ "${skip_if_detected}" = "true" ]; then
+      set +e
+      local plugin_check
+      plugin_check=$(ibmcloud plugin list 2>/dev/null | grep -w "${plugin_name}" || true)
+      set -e
+
+      if [ -n "${plugin_check}" ]; then
+        if [ "${verbose}" = true ]; then
+          echo "Plugin '${plugin_name}' already installed. Skipping."
+        fi
+        skipped_plugins+=("${plugin_name}")
+        continue
+      fi
+    fi
+
+    # Build install command
+    local install_cmd="ibmcloud plugin install ${plugin_name} -f"
+    if [ "${version}" != "latest" ]; then
+      install_cmd="${install_cmd} -v ${version}"
+    fi
+
+    if [ "${verbose}" = true ]; then
+      echo "Running: ${install_cmd}"
+    fi
+
+    # Install the plugin
+    set +e
+    if [ "${verbose}" = true ]; then
+      ${install_cmd}
+      local rc=$?
+    else
+      ${install_cmd} >/dev/null 2>&1
+      local rc=$?
+    fi
+    set -e
+
+    if [ ${rc} -eq 0 ]; then
+      installed_plugins+=("${plugin_name}")
+      if [ "${verbose}" = true ]; then
+        echo "Successfully installed plugin: ${plugin_name}"
+      fi
+    else
+      failed_plugins+=("${plugin_name}")
+      echo "Error: Failed to install plugin '${plugin_name}'" >&2
+    fi
+  done
+
+  # Restore original IBMCLOUD_HOME if it was changed
+  if [ -n "${location}" ]; then
+    if [ -n "${original_ibmcloud_home}" ]; then
+      export IBMCLOUD_HOME="${original_ibmcloud_home}"
+    else
+      unset IBMCLOUD_HOME
+    fi
+  fi
+
+  # Print summary
+  if [ "${verbose}" = true ]; then
+    echo ""
+    echo "=========================================="
+    echo "Installation Summary:"
+    echo "=========================================="
+    
+    if [ ${#installed_plugins[@]} -gt 0 ]; then
+      echo "✅ Installed (${#installed_plugins[@]}): ${installed_plugins[*]}"
+    fi
+    
+    if [ ${#skipped_plugins[@]} -gt 0 ]; then
+      echo "⏭️  Skipped (${#skipped_plugins[@]}): ${skipped_plugins[*]}"
+    fi
+    
+    if [ ${#failed_plugins[@]} -gt 0 ]; then
+      echo "❌ Failed (${#failed_plugins[@]}): ${failed_plugins[*]}"
+    fi
+    echo "=========================================="
+  fi
+
+  # Return error if any plugins failed
+  if [ ${#failed_plugins[@]} -gt 0 ]; then
+    echo "Error: Failed to install ${#failed_plugins[@]} plugin(s): ${failed_plugins[*]}" >&2
+    return ${RETURN_CODE_ERROR}
+  fi
+
+  if [ "${verbose}" = true ]; then
+    echo "Successfully processed all plugins"
+  fi
+
+  return ${RETURN_CODE_SUCCESS}
+}
+
+#===============================================================
 # UNIT TESTS
 #===============================================================
 _test() {
@@ -211,6 +387,26 @@ _test() {
       rc=${RETURN_CODE_SUCCESS}
       install_ibmcloud "2.41.0" "/tmp" "false" >/dev/null 2>&1 || rc=$?
       assert_pass "${rc}"
+      printf "%s\n\n" "✅ PASS"
+    fi
+
+    # install_ibmcloud_plugins
+    # -----------------------------------
+    if [ "${make_api_calls}" = true ]; then
+      # - Test installing multiple plugins
+      printf "%s\n" "Running 'install_ibmcloud_plugins with array of plugins'"
+      local test_plugins=("cloud-object-storage" "container-registry")
+      rc=${RETURN_CODE_SUCCESS}
+      install_ibmcloud_plugins test_plugins "latest" "" "true" >/dev/null 2>&1 || rc=$?
+      assert_pass "${rc}"
+      printf "%s\n\n" "✅ PASS"
+
+      # - Test with one invalid plugin in the list (should fail)
+      printf "%s\n" "Running 'install_ibmcloud_plugins with invalid plugin in array'"
+      local test_plugins_invalid=("cloud-object-storage" "invalid-plugin-xyz")
+      rc=${RETURN_CODE_SUCCESS}
+      install_ibmcloud_plugins test_plugins_invalid "latest" "" "false" >/dev/null 2>&1 || rc=$?
+      assert_fail "${rc}"
       printf "%s\n\n" "✅ PASS"
     fi
 
