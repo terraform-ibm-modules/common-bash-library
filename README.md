@@ -266,6 +266,34 @@ install_ibmcloud "2.41.0" "/usr/local/bin" "true"
 
 <!------------------------------------------------>
 
+## [ibmcloud/plugin](ibmcloud/plugin.sh)
+<details>
+  <summary>install_ibmcloud_plugin</summary>
+
+Installs an IBM Cloud CLI plugin.
+
+**Environment Variables:**
+- `VERBOSE`: If set to true, print verbose output (optional, defaults to false)
+
+**Arguments:**
+- `$1`: name of the plugin to install (required). Example: "container-service"
+- `$2`: if set to true, skips installation if plugin is already installed (optional, defaults to true)
+- `$3`: plugin version to install (optional, defaults to latest)
+
+**Returns:**
+- `0` - Success (plugin installation successful)
+- `1` - Failure (plugin installation failed)
+- `2` - Failure (incorrect usage of function)
+
+**Usage:**
+```bash
+install_ibmcloud_plugin "container-service"
+install_ibmcloud_plugin "cloud-object-storage" "false" "1.2.3"
+```
+</details>
+
+<!------------------------------------------------>
+
 ## Usage
 
 ### Sourcing the Library
