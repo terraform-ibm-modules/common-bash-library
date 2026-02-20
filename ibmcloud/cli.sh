@@ -294,8 +294,8 @@ install_ibmcloud_plugin() {
   fi
 
   # Build install command - ibmcloud supports multiple plugins in one command
-  local install_cmd=(ibmcloud plugin install -f)
-  install_cmd+=("${plugins_to_install[@]}")
+  # The @version syntax is supported: ibmcloud plugin install plugin1@version1 plugin2@version2
+  local install_cmd=(ibmcloud plugin install -f "${plugins_to_install[@]}")
 
   if [ "${verbose}" = true ]; then
     echo "Running: ${install_cmd[*]}"
