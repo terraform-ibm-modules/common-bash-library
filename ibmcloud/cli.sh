@@ -208,7 +208,7 @@ install_ibmcloud_plugin() {
 
   # Validate plugin_name is provided
   if [ -z "${plugin_name}" ]; then
-    echo "Error: Plugin name is required as the first argument" >&2
+    echo "Error: Plugin name is required as the first argument. Run 'ibmcloud plugin repo-plugins' to see all available plugins." >&2
     return ${RETURN_CODE_ERROR_INCORRECT_USAGE}
   fi
 
