@@ -288,14 +288,22 @@ Installs a single IBM Cloud CLI plugin.
 **Usage:**
 ```bash
 # Install latest version of code-engine plugin
-install_ibmcloud_plugin "code-engine" "latest" "/tmp" "true"
+install_ibmcloud_plugin "code-engine"
 
 # Install specific version of container-service plugin
 install_ibmcloud_plugin "container-service" "1.0.0" "/custom/path" "false"
 
-# Install multiple plugins with different versions (use loop)
+# Install multiple plugins with different versions using a loop
 for plugin in "code-engine" "container-service" "cloud-object-storage"; do
-  install_ibmcloud_plugin "${plugin}" "latest" "/tmp" "true"
+  install_ibmcloud_plugin "${plugin}" "latest" "" "true"
+done
+
+# Install multiple plugins with specific versions using a loop
+plugins=("code-engine:1.2.3" "container-service:2.0.0" "cloud-object-storage:latest")
+for entry in "${plugins[@]}"; do
+  plugin_name="${entry%%:*}"
+  plugin_version="${entry##*:}"
+  install_ibmcloud_plugin "${plugin_name}" "${plugin_version}" "" "true"
 done
 ```
 
@@ -306,42 +314,6 @@ done
 
 </details>
 
-<!------------------------------------------------>
-
-<details>
-  <summary>install_ibmcloud_plugins</summary>
-
-Installs multiple IBM Cloud CLI plugins (convenience wrapper).
-
-**Environment Variables:**
-- `VERBOSE`: If set to true, print verbose output (optional, defaults to false)
-
-**Arguments:**
-- `$1..n`: plugin names to install (required, at least one plugin name)
-- All plugins will be installed with "latest" version to the default location
-- To install plugins with specific versions or custom locations, use `install_ibmcloud_plugin` directly
-
-**Returns:**
-- `0` - Success (all plugins installed successfully)
-- `1` - Failure (one or more plugins failed to install)
-- `2` - Failure (incorrect usage of function)
-
-**Usage:**
-```bash
-# Install multiple plugins with latest versions
-install_ibmcloud_plugins "code-engine" "container-service" "cloud-object-storage"
-
-# For version-specific or custom location installs, use install_ibmcloud_plugin instead
-install_ibmcloud_plugin "code-engine" "1.2.3" "/tmp" "true"
-install_ibmcloud_plugin "container-service" "2.0.0" "/tmp" "true"
-```
-
-**Important Notes:**
-- This is a convenience wrapper that calls `install_ibmcloud_plugin` for each plugin
-- All plugins are installed with "latest" version to the default location
-- For more control (specific versions, custom locations), use `install_ibmcloud_plugin` directly
-
-</details>
 
 <!------------------------------------------------>
 

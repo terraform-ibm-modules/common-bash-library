@@ -300,96 +300,6 @@ install_ibmcloud_plugin() {
     return ${RETURN_CODE_ERROR}
   fi
 }
-#===============================================================
-# FUNCTION: install_ibmcloud_plugins
-# DESCRIPTION: Installs multiple IBM Cloud CLI plugins (wrapper function)
-#
-# ENVIRONMENT VARIABLES:
-#   - VERBOSE: If set to true, print verbose output (optional, defaults to false)
-#
-# ARGUMENTS:
-#   - $1..n: plugin names to install (required, at least one plugin name)
-#   - All plugins will be installed with "latest" version to the default location
-#   - To install plugins with specific versions or custom locations, use install_ibmcloud_plugin directly
-#
-# RETURNS:
-#   0 - Success (all plugins installed successfully)
-#   1 - Failure (one or more plugins failed to install)
-#   2 - Failure (incorrect usage of function)
-#
-# USAGE:
-#   install_ibmcloud_plugins "code-engine" "container-service" "cloud-object-storage"
-#===============================================================
-install_ibmcloud_plugins() {
-
-  local verbose=${VERBOSE:-false}
-
-  # Validate at least one plugin name is provided
-  if [ $# -lt 1 ]; then
-    echo "Error: At least one plugin name is required" >&2
-    return ${RETURN_CODE_ERROR_INCORRECT_USAGE}
-  fi
-
-  # ensure ibmcloud is installed
-  check_required_bins ibmcloud || return $?
-
-  if [ "${verbose}" = true ]; then
-    echo "Installing IBM Cloud CLI plugins: $*"
-  fi
-
-  # Track installation results
-  local failed_plugins=()
-  local installed_plugins=()
-
-  # Install each plugin using install_ibmcloud_plugin
-  for plugin_name in "$@"; do
-    if [ "${verbose}" = true ]; then
-      echo ""
-      echo "Processing plugin: ${plugin_name}"
-    fi
-
-    # Call install_ibmcloud_plugin for each plugin
-    if install_ibmcloud_plugin "${plugin_name}" "latest" "" "true"; then
-      installed_plugins+=("${plugin_name}")
-      if [ "${verbose}" = true ]; then
-        echo "Successfully processed plugin: ${plugin_name}"
-      fi
-    else
-      failed_plugins+=("${plugin_name}")
-      echo "Error: Failed to install plugin '${plugin_name}'" >&2
-    fi
-  done
-
-  # Print summary
-  if [ "${verbose}" = true ]; then
-    echo ""
-    echo "=========================================="
-    echo "Installation Summary:"
-    echo "=========================================="
-
-    if [ ${#installed_plugins[@]} -gt 0 ]; then
-      echo "✅ Processed (${#installed_plugins[@]}): ${installed_plugins[*]}"
-    fi
-
-    if [ ${#failed_plugins[@]} -gt 0 ]; then
-      echo "❌ Failed (${#failed_plugins[@]}): ${failed_plugins[*]}"
-    fi
-    echo "=========================================="
-  fi
-
-  # Return error if any plugins failed
-  if [ ${#failed_plugins[@]} -gt 0 ]; then
-    echo "Error: Failed to install ${#failed_plugins[@]} plugin(s): ${failed_plugins[*]}" >&2
-    return ${RETURN_CODE_ERROR}
-  fi
-
-  if [ "${verbose}" = true ]; then
-    echo "Successfully processed all plugins"
-  fi
-
-  return ${RETURN_CODE_SUCCESS}
-}
-
 
 #===============================================================
 # UNIT TESTS
@@ -460,21 +370,6 @@ _test() {
       assert_pass "${rc}"
       printf "%s\n\n" "✅ PASS"
 
-      # install_ibmcloud_plugins
-      # -----------------------------------
-      # - Test installing multiple plugins
-      printf "%s\n" "Running 'install_ibmcloud_plugins cloud-object-storage container-registry'"
-      rc=${RETURN_CODE_SUCCESS}
-      install_ibmcloud_plugins "cloud-object-storage" "container-registry" >/dev/null 2>&1 || rc=$?
-      assert_pass "${rc}"
-      printf "%s\n\n" "✅ PASS"
-
-      # - Test with one invalid plugin in the list (should fail)
-      printf "%s\n" "Running 'install_ibmcloud_plugins cloud-object-storage invalid-plugin-xyz'"
-      rc=${RETURN_CODE_SUCCESS}
-      install_ibmcloud_plugins "cloud-object-storage" "invalid-plugin-xyz" >/dev/null 2>&1 || rc=$?
-      assert_fail "${rc}"
-      printf "%s\n\n" "✅ PASS"
     fi
 
     echo "✅ All tests passed!"
