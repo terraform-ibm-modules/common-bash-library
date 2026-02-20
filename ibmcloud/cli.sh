@@ -227,7 +227,7 @@ install_ibmcloud_plugin() {
     original_ibmcloud_home="${IBMCLOUD_HOME:-}"
     export IBMCLOUD_HOME="${location}"
     mkdir -p "${location}"
-    
+
     if [ "${verbose}" = true ]; then
       echo "Using custom IBM Cloud home directory: ${location}"
     fi
@@ -249,7 +249,7 @@ install_ibmcloud_plugin() {
       if [ "${verbose}" = true ]; then
         echo "Plugin '${plugin_name}' already installed. Skipping."
       fi
-      
+
       # Restore original IBMCLOUD_HOME if it was changed
       if [ -n "${location}" ]; then
         if [ -n "${original_ibmcloud_home}" ]; then
@@ -258,7 +258,7 @@ install_ibmcloud_plugin() {
           unset IBMCLOUD_HOME
         fi
       fi
-      
+
       return ${RETURN_CODE_SUCCESS}
     fi
   fi
@@ -340,7 +340,6 @@ install_ibmcloud_plugins() {
   # Track installation results
   local failed_plugins=()
   local installed_plugins=()
-  local skipped_plugins=()
 
   # Install each plugin using install_ibmcloud_plugin
   for plugin_name in "$@"; do
@@ -367,11 +366,11 @@ install_ibmcloud_plugins() {
     echo "=========================================="
     echo "Installation Summary:"
     echo "=========================================="
-    
+
     if [ ${#installed_plugins[@]} -gt 0 ]; then
       echo "✅ Processed (${#installed_plugins[@]}): ${installed_plugins[*]}"
     fi
-    
+
     if [ ${#failed_plugins[@]} -gt 0 ]; then
       echo "❌ Failed (${#failed_plugins[@]}): ${failed_plugins[*]}"
     fi
