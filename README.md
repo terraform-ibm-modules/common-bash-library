@@ -266,6 +266,57 @@ install_ibmcloud "2.41.0" "/usr/local/bin" "true"
 
 <!------------------------------------------------>
 
+<details>
+  <summary>install_ibmcloud_plugin</summary>
+
+Installs one or more IBM Cloud CLI plugins.
+
+**Environment Variables:**
+- `VERBOSE`: If set to true, print verbose output (optional, defaults to false)
+
+**Arguments:**
+- `$1`: comma-separated plugin name(s) (required). Can specify version using `@` syntax. Examples: `"code-engine"` or `"container-service@1.0.506,secrets-manager@0.1.25"`
+- `$2`: custom directory for plugin installation (optional, uses latest if not specified)
+- `$3`: if set to true, skips installation if plugin is already installed (optional, defaults to "true")
+
+**Returns:**
+- `0` - Success (all plugins installed successfully)
+- `1` - Failure (one or more plugins failed to install)
+- `2` - Failure (incorrect usage of function)
+
+**Usage:**
+```bash
+# Install latest version of a single plugin
+install_ibmcloud_plugin "code-engine"
+
+# Install multiple plugins (latest versions) - store in variable first
+plugins="code-engine,container-service,cloud-object-storage"
+install_ibmcloud_plugin "${plugins}"
+
+# Install plugins with specific versions using @ syntax
+plugins="container-service@1.0.506,secrets-manager@0.1.25"
+install_ibmcloud_plugin "${plugins}"
+
+# Install to custom location
+plugins="code-engine,container-service@1.0.506"
+install_ibmcloud_plugin "${plugins}" "/tmp" "true"
+
+# Force reinstall (skip_if_detected = false)
+install_ibmcloud_plugin "code-engine" "" "false"
+```
+
+**Important Notes:**
+- The `@version` syntax allows you to specify exact plugin versions (e.g., `container-service@1.0.506`)
+- Multiple plugins can be installed in a single command using comma separation
+- When using a custom directory (via `$2`), you must set `IBMCLOUD_HOME` environment variable in any script that uses the plugins
+- Example: `export IBMCLOUD_HOME="/tmp"` before running `ibmcloud` commands
+- This ensures `ibmcloud` can locate the installed plugins
+
+</details>
+
+
+<!------------------------------------------------>
+
 ## Usage
 
 ### Sourcing the Library
