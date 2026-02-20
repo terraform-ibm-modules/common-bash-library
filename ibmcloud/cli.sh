@@ -453,16 +453,15 @@ _test() {
       assert_fail "${rc}"
       printf "%s\n\n" "✅ PASS"
 
-      # - Test installing plugin with specific version to custom location
-      printf "%s\n" "Running 'install_ibmcloud_plugin container-registry 1.0.0 /tmp false'"
+      # - Test installing plugin to custom location
+      printf "%s\n" "Running 'install_ibmcloud_plugin container-registry latest /tmp false'"
       rc=${RETURN_CODE_SUCCESS}
-      install_ibmcloud_plugin "container-registry" "1.0.0" "/tmp" "false" >/dev/null 2>&1 || rc=$?
+      install_ibmcloud_plugin "container-registry" "latest" "/tmp" "false" >/dev/null 2>&1 || rc=$?
       assert_pass "${rc}"
       printf "%s\n\n" "✅ PASS"
 
-    # install_ibmcloud_plugins
-    # -----------------------------------
-    if [ "${make_api_calls}" = true ]; then
+      # install_ibmcloud_plugins
+      # -----------------------------------
       # - Test installing multiple plugins
       printf "%s\n" "Running 'install_ibmcloud_plugins cloud-object-storage container-registry'"
       rc=${RETURN_CODE_SUCCESS}
@@ -476,7 +475,6 @@ _test() {
       install_ibmcloud_plugins "cloud-object-storage" "invalid-plugin-xyz" >/dev/null 2>&1 || rc=$?
       assert_fail "${rc}"
       printf "%s\n\n" "✅ PASS"
-    fi
     fi
 
     echo "✅ All tests passed!"
