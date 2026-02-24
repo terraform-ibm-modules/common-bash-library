@@ -201,7 +201,7 @@ install_ibmcloud() {
 #
 #   # Multiple plugins with versions (recommended: store in variable first)
 #   plugins="container-service@1.0.506,secrets-manager@0.1.25"
-#   install_ibmcloud_plugin "${plugins}"
+#   install_ibmcloud_plugins "${plugins}"
 #
 #   # With custom location
 #   plugins="code-engine,container-service@1.0.506"
