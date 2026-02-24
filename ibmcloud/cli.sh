@@ -197,7 +197,7 @@ install_ibmcloud() {
 #
 # USAGE:
 #   # Single plugin
-#   install_ibmcloud_plugin "code-engine"
+#   install_ibmcloud_plugins "code-engine"
 #
 #   # Multiple plugins with versions (recommended: store in variable first)
 #   plugins="container-service@1.0.506,secrets-manager@0.1.25"
