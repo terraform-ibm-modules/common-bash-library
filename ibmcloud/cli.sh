@@ -186,7 +186,7 @@ install_ibmcloud() {
 # ARGUMENTS:
 #   - $1: comma-separated plugin name(s) (required). Can specify version using @ syntax.
 #         Examples: "code-engine" or "container-service@1.0.506,secrets-manager@0.1.25"
-#   - $2: custom directory for plugin installation (optional, uses latest if not specified)
+#   - $2: custom directory for plugin installation (optional, uses default IBM Cloud home directory if not specified)
 #   - $3: if set to true, skips installation if plugin is already installed (optional, defaults to true)
 #         Plugin detection is done by running 'ibmcloud <plugin_name>' which returns 0 if installed
 #
@@ -205,7 +205,7 @@ install_ibmcloud() {
 #
 #   # With custom location
 #   plugins="code-engine,container-service@1.0.506"
-#   install_ibmcloud_plugin "${plugins}" "/tmp" "true"
+#   install_ibmcloud_plugins "${plugins}" "/tmp" "true"
 #===============================================================
 install_ibmcloud_plugins() {
 
@@ -237,6 +237,15 @@ install_ibmcloud_plugins() {
     echo "Error: At least one plugin name is required." >&2
     return ${RETURN_CODE_ERROR_INCORRECT_USAGE}
   fi
+
+  # Trim whitespace from each plugin name
+  local trimmed_plugins=()
+  for plugin in "${plugins[@]}"; do
+    # Remove leading and trailing whitespace
+    plugin=$(echo "${plugin}" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
+    trimmed_plugins+=("${plugin}")
+  done
+  plugins=("${trimmed_plugins[@]}")
 
   # Set custom plugin directory if specified
   local original_ibmcloud_home=""
@@ -367,48 +376,55 @@ _test() {
       printf "%s\n\n" "✅ PASS"
     fi
 
-    # install_ibmcloud_plugin
+    # install_ibmcloud_plugins
     # -----------------------------------
     if [ "${make_api_calls}" = true ]; then
       # - Test installing a single plugin
-      printf "%s\n" "Running 'install_ibmcloud_plugin cloud-object-storage'"
+      printf "%s\n" "Running 'install_ibmcloud_plugins cloud-object-storage'"
       rc=${RETURN_CODE_SUCCESS}
-      install_ibmcloud_plugin "cloud-object-storage" >/dev/null 2>&1 || rc=$?
+      install_ibmcloud_plugins "cloud-object-storage" >/dev/null 2>&1 || rc=$?
       assert_pass "${rc}"
       printf "%s\n\n" "✅ PASS"
 
       # - Test installing plugin when it already exists (should be skipped)
-      printf "%s\n" "Running 'install_ibmcloud_plugin cloud-object-storage' (already installed - should skip)"
+      printf "%s\n" "Running 'install_ibmcloud_plugins cloud-object-storage' (already installed - should skip)"
       rc=${RETURN_CODE_SUCCESS}
-      install_ibmcloud_plugin "cloud-object-storage" >/dev/null 2>&1 || rc=$?
+      install_ibmcloud_plugins "cloud-object-storage" >/dev/null 2>&1 || rc=$?
       assert_pass "${rc}"
       printf "%s\n\n" "✅ PASS"
 
       # - Test installing multiple plugins with comma-separated syntax
-      printf "%s\n" "Running 'install_ibmcloud_plugin container-registry,code-engine'"
+      printf "%s\n" "Running 'install_ibmcloud_plugins container-registry,code-engine'"
       rc=${RETURN_CODE_SUCCESS}
-      install_ibmcloud_plugin "container-registry,code-engine" >/dev/null 2>&1 || rc=$?
+      install_ibmcloud_plugins "container-registry,code-engine" >/dev/null 2>&1 || rc=$?
+      assert_pass "${rc}"
+      printf "%s\n\n" "✅ PASS"
+
+      # - Test installing multiple plugins with spaces after commas
+      printf "%s\n" "Running 'install_ibmcloud_plugins \"container-registry, code-engine\"' (with spaces)"
+      rc=${RETURN_CODE_SUCCESS}
+      install_ibmcloud_plugins "container-registry, code-engine" >/dev/null 2>&1 || rc=$?
       assert_pass "${rc}"
       printf "%s\n\n" "✅ PASS"
 
       # - Test installing plugins with version syntax
-      printf "%s\n" "Running 'install_ibmcloud_plugin container-service@1.0.746,secrets-manager@2.0.13'"
+      printf "%s\n" "Running 'install_ibmcloud_plugins container-service@1.0.746,secrets-manager@2.0.13'"
       rc=${RETURN_CODE_SUCCESS}
-      install_ibmcloud_plugin "container-service@1.0.746,secrets-manager@2.0.13" >/dev/null 2>&1 || rc=$?
+      install_ibmcloud_plugins "container-service@1.0.746,secrets-manager@2.0.13" >/dev/null 2>&1 || rc=$?
       assert_pass "${rc}"
       printf "%s\n\n" "✅ PASS"
 
       # - Test with invalid plugin (should fail)
-      printf "%s\n" "Running 'install_ibmcloud_plugin invalid-plugin-xyz' (should fail)"
+      printf "%s\n" "Running 'install_ibmcloud_plugins invalid-plugin-xyz' (should fail)"
       rc=${RETURN_CODE_SUCCESS}
-      install_ibmcloud_plugin "invalid-plugin-xyz" "" "false" >/dev/null 2>&1 || rc=$?
+      install_ibmcloud_plugins "invalid-plugin-xyz" "" "false" >/dev/null 2>&1 || rc=$?
       assert_fail "${rc}"
       printf "%s\n\n" "✅ PASS"
 
       # - Test installing plugin to custom location
-      printf "%s\n" "Running 'install_ibmcloud_plugin secrets-manager /tmp false'"
+      printf "%s\n" "Running 'install_ibmcloud_plugins secrets-manager /tmp false'"
       rc=${RETURN_CODE_SUCCESS}
-      install_ibmcloud_plugin "secrets-manager" "/tmp" "false" >/dev/null 2>&1 || rc=$?
+      install_ibmcloud_plugins "secrets-manager" "/tmp" "false" >/dev/null 2>&1 || rc=$?
       assert_pass "${rc}"
       printf "%s\n\n" "✅ PASS"
 

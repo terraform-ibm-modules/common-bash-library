@@ -267,7 +267,7 @@ install_ibmcloud "2.41.0" "/usr/local/bin" "true"
 <!------------------------------------------------>
 
 <details>
-  <summary>install_ibmcloud_plugin</summary>
+  <summary>install_ibmcloud_plugins</summary>
 
 Installs one or more IBM Cloud CLI plugins.
 
@@ -275,8 +275,8 @@ Installs one or more IBM Cloud CLI plugins.
 - `VERBOSE`: If set to true, print verbose output (optional, defaults to false)
 
 **Arguments:**
-- `$1`: comma-separated plugin name(s) (required). Can specify version using `@` syntax. Examples: `"code-engine"` or `"container-service@1.0.506,secrets-manager@0.1.25"`
-- `$2`: custom directory for plugin installation (optional, uses latest if not specified)
+- `$1`: comma-separated plugin name(s) (required). Can specify version using `@` syntax. Spaces after commas are automatically trimmed. Examples: `"code-engine"` or `"container-service@1.0.506,secrets-manager@0.1.25"` or `"container-registry, code-engine"`
+- `$2`: custom directory for plugin installation (optional, uses default IBM Cloud home directory if not specified)
 - `$3`: if set to true, skips installation if plugin is already installed (optional, defaults to "true")
 
 **Returns:**
@@ -287,22 +287,25 @@ Installs one or more IBM Cloud CLI plugins.
 **Usage:**
 ```bash
 # Install latest version of a single plugin
-install_ibmcloud_plugin "code-engine"
+install_ibmcloud_plugins "code-engine"
 
 # Install multiple plugins (latest versions) - store in variable first
 plugins="code-engine,container-service,cloud-object-storage"
-install_ibmcloud_plugin "${plugins}"
+install_ibmcloud_plugins "${plugins}"
+
+# Install multiple plugins with spaces after commas (also supported)
+install_ibmcloud_plugins "container-registry, code-engine"
 
 # Install plugins with specific versions using @ syntax
 plugins="container-service@1.0.506,secrets-manager@0.1.25"
-install_ibmcloud_plugin "${plugins}"
+install_ibmcloud_plugins "${plugins}"
 
 # Install to custom location
 plugins="code-engine,container-service@1.0.506"
-install_ibmcloud_plugin "${plugins}" "/tmp" "true"
+install_ibmcloud_plugins "${plugins}" "/tmp" "true"
 
 # Force reinstall (skip_if_detected = false)
-install_ibmcloud_plugin "code-engine" "" "false"
+install_ibmcloud_plugins "code-engine" "" "false"
 ```
 
 **Important Notes:**
