@@ -393,15 +393,8 @@ _test() {
       assert_pass "${rc}"
       printf "%s\n\n" "✅ PASS"
 
-      # - Test installing multiple plugins with comma-separated syntax
-      printf "%s\n" "Running 'install_ibmcloud_plugins container-registry,code-engine'"
-      rc=${RETURN_CODE_SUCCESS}
-      install_ibmcloud_plugins "container-registry,code-engine" >/dev/null 2>&1 || rc=$?
-      assert_pass "${rc}"
-      printf "%s\n\n" "✅ PASS"
-
-      # - Test installing multiple plugins with spaces after commas
-      printf "%s\n" "Running 'install_ibmcloud_plugins \"container-registry, code-engine\"' (with spaces)"
+      # - Test installing multiple plugins with comma-separated syntax (with spaces after commas)
+      printf "%s\n" "Running 'install_ibmcloud_plugins \"container-registry, code-engine\"' (tests comma separation and space trimming)"
       rc=${RETURN_CODE_SUCCESS}
       install_ibmcloud_plugins "container-registry, code-engine" >/dev/null 2>&1 || rc=$?
       assert_pass "${rc}"
