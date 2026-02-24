@@ -177,7 +177,7 @@ install_ibmcloud() {
 }
 
 #===============================================================
-# FUNCTION: install_ibmcloud_plugin
+# FUNCTION: install_ibmcloud_plugins
 # DESCRIPTION: Installs one or more IBM Cloud CLI plugins
 #
 # ENVIRONMENT VARIABLES:
