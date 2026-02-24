@@ -207,7 +207,7 @@ install_ibmcloud() {
 #   plugins="code-engine,container-service@1.0.506"
 #   install_ibmcloud_plugin "${plugins}" "/tmp" "true"
 #===============================================================
-install_ibmcloud_plugin() {
+install_ibmcloud_plugins() {
 
   local plugins_str=${1:-""}
   local location=${2:-""}
