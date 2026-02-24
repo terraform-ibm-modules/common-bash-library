@@ -217,7 +217,7 @@ install_ibmcloud_plugin() {
   # Validate plugins string is provided
   if [ -z "${plugins_str}" ]; then
     echo "Error: Plugin name(s) required as first argument. Run 'ibmcloud plugin repo-plugins' to see all available plugins." >&2
-    echo "Usage: install_ibmcloud_plugin <plugin1[@version][,plugin2[@version]...]> [location] [skip_if_detected]" >&2
+    echo "Usage: install_ibmcloud_plugin <plugin1[@version],[plugin2[@version]...]> [location] [skip_if_detected]" >&2
     return ${RETURN_CODE_ERROR_INCORRECT_USAGE}
   fi
 
