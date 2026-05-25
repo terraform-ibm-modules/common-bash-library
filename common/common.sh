@@ -573,6 +573,55 @@ _test() {
       printf "%s\n\n" "✅ PASS"
     fi
 
+    # install_python_package
+    # -----------------------------------
+    # - Test with missing arguments (should fail)
+    printf "%s\n" "Running 'install_python_package' (missing arguments - should fail)"
+    rc=${RETURN_CODE_SUCCESS}
+    install_python_package >/dev/null 2>&1 || rc=$?
+    assert_fail "${rc}"
+    printf "%s\n\n" "✅ PASS"
+
+    # - Test with missing directory argument (should fail)
+    printf "%s\n" "Running 'install_python_package requests' (missing directory - should fail)"
+    rc=${RETURN_CODE_SUCCESS}
+    install_python_package "requests" >/dev/null 2>&1 || rc=$?
+    assert_fail "${rc}"
+    printf "%s\n\n" "✅ PASS"
+
+    # - Test installing a Python package to /tmp
+    printf "%s\n" "Running 'install_python_package requests>=2.31.0 /tmp'"
+    rc=${RETURN_CODE_SUCCESS}
+    install_python_package "requests>=2.31.0" "/tmp" >/dev/null 2>&1 || rc=$?
+    assert_pass "${rc}"
+    printf "%s\n\n" "✅ PASS"
+
+    # - Verify the package was installed
+    printf "%s\n" "Verifying requests package was installed to /tmp"
+    rc=${RETURN_CODE_SUCCESS}
+    python3 -c "import sys; sys.path.insert(0, '/tmp'); import requests; print(requests.__version__)" >/dev/null 2>&1 || rc=$?
+    assert_pass "${rc}"
+    printf "%s\n\n" "✅ PASS"
+
+    # - Test installing to a custom directory
+    local test_dir="/tmp/python-test-$$"
+    mkdir -p "${test_dir}"
+    printf "%s\n" "Running 'install_python_package certifi ${test_dir}'"
+    rc=${RETURN_CODE_SUCCESS}
+    install_python_package "certifi" "${test_dir}" >/dev/null 2>&1 || rc=$?
+    assert_pass "${rc}"
+    printf "%s\n\n" "✅ PASS"
+
+    # - Verify the package was installed to custom directory
+    printf "%s\n" "Verifying certifi package was installed to ${test_dir}"
+    rc=${RETURN_CODE_SUCCESS}
+    python3 -c "import sys; sys.path.insert(0, '${test_dir}'); import certifi" >/dev/null 2>&1 || rc=$?
+    assert_pass "${rc}"
+    printf "%s\n\n" "✅ PASS"
+
+    # Cleanup test directory
+    rm -rf "${test_dir}"
+
     # -----------------------------------
 echo "✅ All tests passed!"
 }
