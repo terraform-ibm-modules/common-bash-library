@@ -606,7 +606,11 @@ _test() {
     # - Test that the package directory exists in /tmp
     printf "%s\n" "Verifying requests package directory exists in /tmp"
     rc=${RETURN_CODE_SUCCESS}
-    [ -d "/tmp/requests" ] || rc=$?
+    if [ -d "/tmp/requests" ]; then
+      rc=${RETURN_CODE_SUCCESS}
+    else
+      rc=${RETURN_CODE_ERROR}
+    fi
     assert_pass "${rc}"
     printf "%s\n\n" "✅ PASS"
 
@@ -667,10 +671,14 @@ install_python_package() {
     elif [[ -f /etc/debian_version ]]; then
       # Debian/Ubuntu
       echo "Installing Python3 via apt..." >&2
-      sudo apt-get update && sudo apt-get install -y python3 python3-pip || {
+      if ! sudo apt-get update; then
+        echo "Error: Failed to update apt" >&2
+        return ${RETURN_CODE_ERROR}
+      fi
+      if ! sudo apt-get install -y python3 python3-pip; then
         echo "Error: Failed to install Python3 via apt" >&2
         return ${RETURN_CODE_ERROR}
-      }
+      fi
     elif [[ -f /etc/redhat-release ]]; then
       # RHEL/CentOS/Fedora
       echo "Installing Python3 via yum/dnf..." >&2
