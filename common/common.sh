@@ -573,44 +573,26 @@ _test() {
       printf "%s\n\n" "✅ PASS"
     fi
 
-    # install_python_package
+    # ensure_python_and_pip
     # -----------------------------------
-    # - Test with missing arguments (should fail)
-    printf "%s\n" "Running 'install_python_package' (missing arguments - should fail)"
+    # - Test ensuring Python3 and pip are available
+    printf "%s\n" "Running 'ensure_python_and_pip'"
     rc=${RETURN_CODE_SUCCESS}
-    install_python_package >/dev/null 2>&1 || rc=$?
-    assert_fail "${rc}"
-    printf "%s\n\n" "✅ PASS"
-
-    # - Test with missing directory argument (should fail)
-    printf "%s\n" "Running 'install_python_package requests' (missing directory - should fail)"
-    rc=${RETURN_CODE_SUCCESS}
-    install_python_package "requests" >/dev/null 2>&1 || rc=$?
-    assert_fail "${rc}"
-    printf "%s\n\n" "✅ PASS"
-
-    # - Test installing a Python package to /tmp
-    printf "%s\n" "Running 'install_python_package requests>=2.31.0 /tmp'"
-    rc=${RETURN_CODE_SUCCESS}
-    install_python_package "requests>=2.31.0" "/tmp" >/dev/null 2>&1 || rc=$?
+    ensure_python_and_pip >/dev/null 2>&1 || rc=$?
     assert_pass "${rc}"
     printf "%s\n\n" "✅ PASS"
 
-    # - Verify the package was installed
-    printf "%s\n" "Verifying requests package was installed to /tmp"
+    # - Verify Python3 is available
+    printf "%s\n" "Verifying python3 is available"
     rc=${RETURN_CODE_SUCCESS}
-    python3 -c "import sys; sys.path.insert(0, '/tmp'); import requests; print(requests.__version__)" >/dev/null 2>&1 || rc=$?
+    command -v python3 >/dev/null 2>&1 || rc=$?
     assert_pass "${rc}"
     printf "%s\n\n" "✅ PASS"
 
-    # - Test that the package directory exists in /tmp
-    printf "%s\n" "Verifying requests package directory exists in /tmp"
+    # - Verify pip is available
+    printf "%s\n" "Verifying pip is available"
     rc=${RETURN_CODE_SUCCESS}
-    if [ -d "/tmp/requests" ]; then
-      rc=${RETURN_CODE_SUCCESS}
-    else
-      rc=${RETURN_CODE_ERROR}
-    fi
+    python3 -m pip --version >/dev/null 2>&1 || rc=$?
     assert_pass "${rc}"
     printf "%s\n\n" "✅ PASS"
 
@@ -619,37 +601,22 @@ echo "✅ All tests passed!"
 }
 
 #===============================================================
-# FUNCTION: install_python_package
-# DESCRIPTION: Install a Python package using pip to a specified directory.
+# FUNCTION: ensure_python_and_pip
+# DESCRIPTION: Ensures Python3 and pip are installed on the system.
+#              Does NOT install Python packages - that should be handled
+#              by the calling module using requirements.txt.
 #
 # ARGUMENTS:
-#   - $1: Package specification (e.g., "requests>=2.31.0") (required)
-#   - $2: Target directory for installation (required)
+#   None
 #
 # RETURNS:
-#   0 - Success (package installed successfully)
-#   1 - Failure (installation failed)
-#   2 - Failure (incorrect usage of function)
+#   0 - Success (Python3 and pip are available)
+#   1 - Failure (installation failed or unsupported OS)
 #
-# USAGE: install_python_package "requests>=2.31.0" "/tmp"
+# USAGE: ensure_python_and_pip
 #===============================================================
-install_python_package() {
-  local package=${1:-""}
-  local directory=${2:-""}
+ensure_python_and_pip() {
   local verbose=${VERBOSE:-false}
-
-  # Validate arguments
-  if [ -z "${package}" ]; then
-    echo "Error: install_python_package requires package specification as first argument" >&2
-    echo "Usage: install_python_package <package> <directory>" >&2
-    return ${RETURN_CODE_ERROR_INCORRECT_USAGE}
-  fi
-
-  if [ -z "${directory}" ]; then
-    echo "Error: install_python_package requires target directory as second argument" >&2
-    echo "Usage: install_python_package <package> <directory>" >&2
-    return ${RETURN_CODE_ERROR_INCORRECT_USAGE}
-  fi
 
   # Check if python3 is available, install if not
   if ! command -v python3 &> /dev/null; then
@@ -728,23 +695,13 @@ install_python_package() {
 
     # Verify pip is now available
     if ! python3 -m pip --version &> /dev/null; then
-      echo "Error: pip installation failed. Cannot install Python packages." >&2
+      echo "Error: pip installation failed." >&2
       return ${RETURN_CODE_ERROR}
     fi
   fi
 
   if [ "${verbose}" = true ]; then
-    echo "Installing Python package: ${package} to ${directory}"
-  fi
-
-  # Install the package to the specified directory
-  if ! python3 -m pip install --target="${directory}" "${package}" --quiet; then
-    echo "Error: Failed to install Python package: ${package}" >&2
-    return ${RETURN_CODE_ERROR}
-  fi
-
-  if [ "${verbose}" = true ]; then
-    echo "Successfully installed Python package: ${package}"
+    echo "Python3 and pip are available"
   fi
 
   return ${RETURN_CODE_SUCCESS}
