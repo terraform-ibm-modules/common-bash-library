@@ -577,6 +577,134 @@ _test() {
 echo "✅ All tests passed!"
 }
 
+#===============================================================
+# FUNCTION: install_python_package
+# DESCRIPTION: Install a Python package using pip to a specified directory.
+#
+# ARGUMENTS:
+#   - $1: Package specification (e.g., "requests>=2.31.0") (required)
+#   - $2: Target directory for installation (required)
+#
+# RETURNS:
+#   0 - Success (package installed successfully)
+#   1 - Failure (installation failed)
+#   2 - Failure (incorrect usage of function)
+#
+# USAGE: install_python_package "requests>=2.31.0" "/tmp"
+#===============================================================
+install_python_package() {
+  local package=${1:-""}
+  local directory=${2:-""}
+  local verbose=${VERBOSE:-false}
+
+  # Validate arguments
+  if [ -z "${package}" ]; then
+    echo "Error: install_python_package requires package specification as first argument" >&2
+    echo "Usage: install_python_package <package> <directory>" >&2
+    return ${RETURN_CODE_ERROR_INCORRECT_USAGE}
+  fi
+
+  if [ -z "${directory}" ]; then
+    echo "Error: install_python_package requires target directory as second argument" >&2
+    echo "Usage: install_python_package <package> <directory>" >&2
+    return ${RETURN_CODE_ERROR_INCORRECT_USAGE}
+  fi
+
+  # Check if python3 is available, install if not
+  if ! command -v python3 &> /dev/null; then
+    echo "Python3 not found. Attempting to install..." >&2
+    
+    # Detect OS and install Python3
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+      # macOS
+      if command -v brew &> /dev/null; then
+        echo "Installing Python3 via Homebrew..." >&2
+        brew install python3 || {
+          echo "Error: Failed to install Python3 via Homebrew" >&2
+          return ${RETURN_CODE_ERROR}
+        }
+      else
+        echo "Error: Homebrew not found. Please install Python3 manually." >&2
+        return ${RETURN_CODE_ERROR}
+      fi
+    elif [[ -f /etc/debian_version ]]; then
+      # Debian/Ubuntu
+      echo "Installing Python3 via apt..." >&2
+      sudo apt-get update && sudo apt-get install -y python3 python3-pip || {
+        echo "Error: Failed to install Python3 via apt" >&2
+        return ${RETURN_CODE_ERROR}
+      }
+    elif [[ -f /etc/redhat-release ]]; then
+      # RHEL/CentOS/Fedora
+      echo "Installing Python3 via yum/dnf..." >&2
+      if command -v dnf &> /dev/null; then
+        sudo dnf install -y python3 python3-pip || {
+          echo "Error: Failed to install Python3 via dnf" >&2
+          return ${RETURN_CODE_ERROR}
+        }
+      else
+        sudo yum install -y python3 python3-pip || {
+          echo "Error: Failed to install Python3 via yum" >&2
+          return ${RETURN_CODE_ERROR}
+        }
+      fi
+    else
+      echo "Error: Unsupported OS. Please install Python3 manually." >&2
+      return ${RETURN_CODE_ERROR}
+    fi
+    
+    echo "Python3 installed successfully" >&2
+  fi
+
+  # Check if pip is available, install if not
+  if ! python3 -m pip --version &> /dev/null; then
+    echo "pip not found. Attempting to install..." >&2
+    
+    # Try to install pip using ensurepip
+    if python3 -m ensurepip --default-pip &> /dev/null; then
+      echo "pip installed successfully via ensurepip" >&2
+    else
+      # Fallback: download and install pip using get-pip.py
+      echo "Attempting to install pip via get-pip.py..." >&2
+      curl -sS https://bootstrap.pypa.io/get-pip.py -o /tmp/get-pip.py || {
+        echo "Error: Failed to download get-pip.py" >&2
+        return ${RETURN_CODE_ERROR}
+      }
+      
+      python3 /tmp/get-pip.py --user || {
+        echo "Error: Failed to install pip via get-pip.py" >&2
+        rm -f /tmp/get-pip.py
+        return ${RETURN_CODE_ERROR}
+      }
+      
+      rm -f /tmp/get-pip.py
+      echo "pip installed successfully via get-pip.py" >&2
+    fi
+    
+    # Verify pip is now available
+    if ! python3 -m pip --version &> /dev/null; then
+      echo "Error: pip installation failed. Cannot install Python packages." >&2
+      return ${RETURN_CODE_ERROR}
+    fi
+  fi
+
+  if [ "${verbose}" = true ]; then
+    echo "Installing Python package: ${package} to ${directory}"
+  fi
+
+  # Install the package to the specified directory
+  if ! python3 -m pip install --target="${directory}" "${package}" --quiet; then
+    echo "Error: Failed to install Python package: ${package}" >&2
+    return ${RETURN_CODE_ERROR}
+  fi
+
+  if [ "${verbose}" = true ]; then
+    echo "Successfully installed Python package: ${package}"
+  fi
+
+  return ${RETURN_CODE_SUCCESS}
+}
+
 main() {
     _test
 }
