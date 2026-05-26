@@ -619,6 +619,8 @@ ensure_python_and_pip() {
   local location=${1:-"/tmp"}
   local verbose=${VERBOSE:-false}
 
+  mkdir -p "${location}"
+
   # Use sudo only if required
   local sudo_cmd=""
   if [[ ! -w "${location}" ]]; then
@@ -631,10 +633,10 @@ ensure_python_and_pip() {
     fi
   fi
 
-  mkdir -p "${location}"
   export PATH="${location}/bin:${PATH}"
+  export PYTHONPATH="${location}:${PYTHONPATH}"
 
-  # Check if python3 is available
+  # Install Python3 if missing
   if ! command -v python3 &>/dev/null; then
     echo "Python3 not found. Attempting installation..." >&2
     # Detect OS and install Python3
@@ -683,10 +685,12 @@ ensure_python_and_pip() {
       echo "Error: Unsupported OS. Please install Python3 manually." >&2
       return ${RETURN_CODE_ERROR}
     fi
+
+    echo "Python3 installed successfully" >&2
   fi
 
   # Check if pip is available, install if not
-  if ! python3 -m pip --version &> /dev/null; then
+  if ! PYTHONPATH="${location}:${PYTHONPATH}" python3 -m pip --version &>/dev/null; then
     echo "pip not found. Attempting to install..." >&2
 
     # Try to install pip using ensurepip
@@ -702,16 +706,19 @@ ensure_python_and_pip() {
         return ${RETURN_CODE_ERROR}
       }
 
-      python3 "${get_pip_script}" --prefix "${location}" || {
+      PYTHONPATH="${location}:${PYTHONPATH}" \
+      python3 "${get_pip_script}" --target "${location}" || {
         echo "Error: Failed to install pip via get-pip.py" >&2
         rm -f "${get_pip_script}"
         return ${RETURN_CODE_ERROR}
       }
 
       rm -f "${get_pip_script}"
+      echo "pip installed successfully via get-pip.py" >&2
     fi
 
-    if ! python3 -m pip --version &>/dev/null; then
+    # Verify pip installation
+    if ! PYTHONPATH="${location}:${PYTHONPATH}" python3 -m pip --version &>/dev/null; then
       echo "Error: pip installation failed." >&2
       return ${RETURN_CODE_ERROR}
     fi
