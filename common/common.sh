@@ -454,6 +454,166 @@ install_kubectl() {
 }
 
 #===============================================================
+# FUNCTION: install_python
+# DESCRIPTION: Installs Python standalone binary distribution
+#
+# ENVIRONMENT VARIABLES:
+#   - VERBOSE: If set to true, print verbose output (optional, defaults to false)
+#
+# ARGUMENTS:
+#   - $1: version of Python to install (optional, defaults to current latest stable supported by python-build-standalone release naming). Example format of valid version is "3.12.9".
+#   - $2: location to install python to (optional, defaults to /usr/local/bin)
+#   - $3: if set to true, skips installation of python if already detected (optional, defaults to true)
+#   - $4: the exact url to download the Python archive from (optional)
+#
+# RETURNS:
+#   0 - Success (python installation successful)
+#   1 - Failure (python installation failed)
+#   2 - Failure (incorrect usage of function)
+#
+# USAGE: install_python "3.12.9" "/usr/local/bin" "true" "https://example.com/cpython-3.12.9+20250212-x86_64-unknown-linux-gnu-install_only.tar.gz"
+#===============================================================
+install_python() {
+  local version=${1:-"latest"}
+  local location=${2:-"/usr/local/bin"}
+  local skip_if_detected=${3:-"true"}
+  local link_to_binary=${4:-""}
+  local verbose=${VERBOSE:-false}
+
+  # Validate $3 arg is boolean
+  if ! is_boolean "${skip_if_detected}"; then
+    echo "Unsupported value detected for the 3rd argument. Only 'true' or 'false' is supported. Found: ${skip_if_detected}." >&2
+    return ${RETURN_CODE_ERROR_INCORRECT_USAGE}
+  fi
+
+  # return 0 if python already installed and skip_if_detected is true
+  if [ "${skip_if_detected}" == "true" ]; then
+    if check_required_bins python3; then
+      if [ "${verbose}" = true ]; then
+        echo "Found python3 already installed. Taking no action."
+      fi
+      return ${RETURN_CODE_SUCCESS}
+    fi
+  fi
+
+  # ensure required binaries are installed
+  check_required_bins curl tar || return $?
+
+  # if no link passed, derive a default link
+  if [ -z "${link_to_binary}" ]; then
+    local os=""
+    local arch=""
+    local archive_name=""
+
+    if [[ ${OSTYPE} == 'darwin'* ]]; then
+      os="apple-darwin"
+      arch=$(return_mac_architecture)
+      if [ "${arch}" = "amd64" ]; then
+        arch="x86_64"
+      elif [ "${arch}" = "arm64" ]; then
+        arch="aarch64"
+      fi
+    else
+      os="unknown-linux-gnu"
+      arch=$(uname -m)
+      if [ "${arch}" = "x86_64" ]; then
+        arch="x86_64"
+      elif [ "${arch}" = "aarch64" ] || [ "${arch}" = "arm64" ]; then
+        arch="aarch64"
+      else
+        echo "Unsupported architecture: ${arch}" >&2
+        return ${RETURN_CODE_ERROR_INCORRECT_USAGE}
+      fi
+    fi
+
+    if [ "${version}" = "latest" ]; then
+      echo "Argument 1 value 'latest' is not supported without providing an explicit download URL as argument 4." >&2
+      return ${RETURN_CODE_ERROR_INCORRECT_USAGE}
+    fi
+
+    archive_name="cpython-${version}+20250212-${arch}-${os}-install_only.tar.gz"
+    link_to_binary="https://github.com/astral-sh/python-build-standalone/releases/download/${version}/$archive_name"
+  fi
+
+  if [ "${verbose}" = true ]; then
+    echo "Using download link: ${link_to_binary}"
+  fi
+
+  # use sudo if needed
+  local arg=""
+  if ! [ -w "${location}" ]; then
+    echo "No write permission to ${location}. Using sudo..."
+    arg=sudo
+  fi
+
+  local tmp_dir="/tmp/install_python.$$"
+  rm -rf "${tmp_dir}"
+  mkdir -p "${tmp_dir}" || return ${RETURN_CODE_ERROR}
+
+  # download archive
+  set +e
+  if ! curl --silent \
+    --connect-timeout 5 \
+    --max-time 30 \
+    --retry 3 \
+    --retry-delay 2 \
+    --retry-connrefused \
+    --fail \
+    --show-error \
+    --location \
+    --output "${tmp_dir}/python.tar.gz" \
+    "${link_to_binary}"; then
+    set -e
+    rm -rf "${tmp_dir}"
+    echo "Failed to download ${link_to_binary}"
+    return ${RETURN_CODE_ERROR}
+  fi
+  set -e
+
+  # extract archive
+  if ! tar -xzf "${tmp_dir}/python.tar.gz" -C "${tmp_dir}"; then
+    rm -rf "${tmp_dir}"
+    echo "Failed to extract Python archive" >&2
+    return ${RETURN_CODE_ERROR}
+  fi
+
+  # install python and pip related binaries
+  ${arg} mkdir -p "${location}" || {
+    rm -rf "${tmp_dir}"
+    return ${RETURN_CODE_ERROR}
+  }
+
+  ${arg} find "${tmp_dir}/python/install/bin" -type f -maxdepth 1 -exec cp {} "${location}/" \; || {
+    rm -rf "${tmp_dir}"
+    echo "Failed to copy Python binaries to ${location}" >&2
+    return ${RETURN_CODE_ERROR}
+  }
+
+  ${arg} chmod +x "${location}/python3" || {
+    rm -rf "${tmp_dir}"
+    return ${RETURN_CODE_ERROR}
+  }
+
+  if [ -f "${location}/python3" ]; then
+    if ! "${location}/python3" -m ensurepip --upgrade >/dev/null 2>&1; then
+      rm -rf "${tmp_dir}"
+      echo "Failed to install pip using ensurepip" >&2
+      return ${RETURN_CODE_ERROR}
+    fi
+  fi
+
+  rm -rf "${tmp_dir}"
+
+  if [ "${verbose}" = true ]; then
+    echo "Successfully completed installation to ${location}/python3"
+    if [ -f "${location}/pip3" ]; then
+      echo "Successfully completed installation to ${location}/pip3"
+    fi
+  fi
+  return ${RETURN_CODE_SUCCESS}
+}
+
+#===============================================================
 # UNIT TESTS
 #===============================================================
 
@@ -573,6 +733,26 @@ _test() {
       printf "%s\n\n" "✅ PASS"
     fi
 
+    # install_python
+    # -----------------------------------
+    if [ "${make_api_calls}" = true ]; then
+      # - Test installing exact version to /tmp using explicit download URL
+      printf "%s\n" "Running 'install_python 3.12.9 /tmp false <custom-url>'"
+      rc=${RETURN_CODE_SUCCESS}
+      install_python "3.12.9" "/tmp" "false" "https://github.com/astral-sh/python-build-standalone/releases/download/20250212/cpython-3.12.9+20250212-x86_64-unknown-linux-gnu-install_only.tar.gz" >/dev/null 2>&1 || rc=$?
+      assert_pass "${rc}"
+      rm -f /tmp/python3 /tmp/pip /tmp/pip3 /tmp/idle3 /tmp/pydoc3 /tmp/python3-config
+      printf "%s\n\n" "✅ PASS"
+
+      # - Test installing it when python3 already exists with default args (should be skipped)
+      if check_required_bins python3 >/dev/null 2>&1; then
+        printf "%s\n" "Running 'install_python' (when python3 already exists - install will be skipped)"
+        rc=${RETURN_CODE_SUCCESS}
+        install_python >/dev/null 2>&1 || rc=$?
+        assert_pass "${rc}"
+        printf "%s\n\n" "✅ PASS"
+      fi
+    fi
     # -----------------------------------
 echo "✅ All tests passed!"
 }

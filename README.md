@@ -167,6 +167,33 @@ install_kubectl "latest" "/usr/local/bin" "true"
 ```
 </details>
 
+<details>
+  <summary>install_python</summary>
+
+Installs a standalone Python distribution and bootstraps `pip`.
+
+**Environment Variables:**
+- `VERBOSE`: If set to true, print verbose output (optional, defaults to false)
+
+**Arguments:**
+- `$1`: version of Python to install (optional, defaults to `"latest"` but requires an explicit URL or supported archive resolution; example format: `"3.12.9"`)
+- `$2`: location to install Python to (optional, defaults to `/usr/local/bin`)
+- `$3`: if set to true, skips installation if `python3` is already detected (optional, defaults to `true`)
+- `$4`: the exact URL to download the Python standalone archive from (optional)
+
+**Returns:**
+- `0` - Success (Python and pip installation successful)
+- `1` - Failure (Python installation failed)
+- `2` - Failure (incorrect usage of function)
+
+**Usage:**
+```bash
+install_python "3.12.9" "/usr/local/bin" "true" "https://github.com/astral-sh/python-build-standalone/releases/download/20250212/cpython-3.12.9+20250212-x86_64-unknown-linux-gnu-install_only.tar.gz"
+```
+</details>
+
+<!------------------------------------------------>
+
 <!------------------------------------------------>
 <details>
   <summary>is_boolean</summary>
