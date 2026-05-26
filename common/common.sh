@@ -616,12 +616,27 @@ echo "✅ All tests passed!"
 # USAGE: ensure_python_and_pip
 #===============================================================
 ensure_python_and_pip() {
+  local location=${1:-"/tmp"}
   local verbose=${VERBOSE:-false}
 
-  # Check if python3 is available, install if not
-  if ! command -v python3 &> /dev/null; then
-    echo "Python3 not found. Attempting to install..." >&2
+  # Use sudo only if required
+  local sudo_cmd=""
+  if [[ ! -w "${location}" ]]; then
+    if command -v sudo &>/dev/null; then
+      echo "No write permission to ${location}. Using sudo..." >&2
+      sudo_cmd="sudo"
+    else
+      echo "Error: No write permission to ${location} and sudo is unavailable." >&2
+      return ${RETURN_CODE_ERROR}
+    fi
+  fi
 
+  mkdir -p "${location}"
+  export PATH="${location}/bin:${PATH}"
+
+  # Check if python3 is available
+  if ! command -v python3 &>/dev/null; then
+    echo "Python3 not found. Attempting installation..." >&2
     # Detect OS and install Python3
     if [[ "$OSTYPE" == "darwin"* ]]; then
       # macOS
@@ -635,37 +650,39 @@ ensure_python_and_pip() {
         echo "Error: Homebrew not found. Please install Python3 manually." >&2
         return ${RETURN_CODE_ERROR}
       fi
+
     elif [[ -f /etc/debian_version ]]; then
       # Debian/Ubuntu
       echo "Installing Python3 via apt..." >&2
-      if ! sudo apt-get update; then
+      ${sudo_cmd} apt-get update || {
         echo "Error: Failed to update apt" >&2
         return ${RETURN_CODE_ERROR}
-      fi
-      if ! sudo apt-get install -y python3 python3-pip; then
+      }
+
+      ${sudo_cmd} apt-get install -y python3 python3-pip || {
         echo "Error: Failed to install Python3 via apt" >&2
         return ${RETURN_CODE_ERROR}
-      fi
+      }
+
     elif [[ -f /etc/redhat-release ]]; then
       # RHEL/CentOS/Fedora
       echo "Installing Python3 via yum/dnf..." >&2
       if command -v dnf &> /dev/null; then
-        sudo dnf install -y python3 python3-pip || {
+        ${sudo_cmd} dnf install -y python3 python3-pip || {
           echo "Error: Failed to install Python3 via dnf" >&2
           return ${RETURN_CODE_ERROR}
         }
       else
-        sudo yum install -y python3 python3-pip || {
+        ${sudo_cmd} yum install -y python3 python3-pip || {
           echo "Error: Failed to install Python3 via yum" >&2
           return ${RETURN_CODE_ERROR}
         }
       fi
+
     else
       echo "Error: Unsupported OS. Please install Python3 manually." >&2
       return ${RETURN_CODE_ERROR}
     fi
-
-    echo "Python3 installed successfully" >&2
   fi
 
   # Check if pip is available, install if not
@@ -678,29 +695,29 @@ ensure_python_and_pip() {
     else
       # Fallback: download and install pip using get-pip.py
       echo "Attempting to install pip via get-pip.py..." >&2
-      curl -sS https://bootstrap.pypa.io/get-pip.py -o /tmp/get-pip.py || {
+      local get_pip_script="/tmp/get-pip.py"
+
+      curl -fsSL https://bootstrap.pypa.io/get-pip.py -o "${get_pip_script}" || {
         echo "Error: Failed to download get-pip.py" >&2
         return ${RETURN_CODE_ERROR}
       }
 
-      python3 /tmp/get-pip.py --user || {
+      python3 "${get_pip_script}" --prefix "${location}" || {
         echo "Error: Failed to install pip via get-pip.py" >&2
-        rm -f /tmp/get-pip.py
+        rm -f "${get_pip_script}"
         return ${RETURN_CODE_ERROR}
       }
 
-      rm -f /tmp/get-pip.py
-      echo "pip installed successfully via get-pip.py" >&2
+      rm -f "${get_pip_script}"
     fi
 
-    # Verify pip is now available
-    if ! python3 -m pip --version &> /dev/null; then
+    if ! python3 -m pip --version &>/dev/null; then
       echo "Error: pip installation failed." >&2
       return ${RETURN_CODE_ERROR}
     fi
   fi
 
-  if [ "${verbose}" = true ]; then
+  if [[ "${verbose}" == "true" ]]; then
     echo "Python3 and pip are available"
   fi
 
