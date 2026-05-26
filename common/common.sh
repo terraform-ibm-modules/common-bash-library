@@ -531,8 +531,11 @@ install_python() {
       return ${RETURN_CODE_ERROR_INCORRECT_USAGE}
     fi
 
-    archive_name="cpython-${version}+20250212-${arch}-${os}-install_only.tar.gz"
-    link_to_binary="https://github.com/astral-sh/python-build-standalone/releases/download/${version}/$archive_name"
+    # python-build-standalone uses build dates as release tags, not Python versions
+    # The build date is hardcoded here; for production use, consider making it configurable
+    local build_date="20250212"
+    archive_name="cpython-${version}+${build_date}-${arch}-${os}-install_only.tar.gz"
+    link_to_binary="https://github.com/astral-sh/python-build-standalone/releases/download/${build_date}/${archive_name}"
   fi
 
   if [ "${verbose}" = true ]; then
@@ -577,23 +580,33 @@ install_python() {
     return ${RETURN_CODE_ERROR}
   fi
 
-  # install python and pip related binaries
+  # Install the entire Python directory structure to preserve library paths
+  # Python standalone builds need their lib directory to function
+  local python_install_dir="${location}/python-${version}"
+
   ${arg} mkdir -p "${location}" || {
     rm -rf "${tmp_dir}"
     return ${RETURN_CODE_ERROR}
   }
 
-  ${arg} find "${tmp_dir}/python/install/bin" -type f -maxdepth 1 -exec cp {} "${location}/" \; || {
-    rm -rf "${tmp_dir}"
-    echo "Failed to copy Python binaries to ${location}" >&2
-    return ${RETURN_CODE_ERROR}
-  }
+  # Remove existing installation if present
+  ${arg} rm -rf "${python_install_dir}"
 
-  ${arg} chmod +x "${location}/python3" || {
+  # Move the entire python directory to the installation location
+  if ! ${arg} mv "${tmp_dir}/python" "${python_install_dir}"; then
     rm -rf "${tmp_dir}"
+    echo "Failed to install Python to ${python_install_dir}" >&2
     return ${RETURN_CODE_ERROR}
-  }
+  fi
 
+  # Create symlinks in the target location for easy access
+  for binary in python3 python3.12 pip pip3 pip3.12 idle3 pydoc3 2to3; do
+    if [ -e "${python_install_dir}/bin/${binary}" ]; then
+      ${arg} ln -sf "${python_install_dir}/bin/${binary}" "${location}/${binary}" 2>/dev/null || true
+    fi
+  done
+
+  # Verify python3 works and install pip
   if [ -f "${location}/python3" ]; then
     if ! "${location}/python3" -m ensurepip --upgrade >/dev/null 2>&1; then
       rm -rf "${tmp_dir}"
@@ -736,7 +749,7 @@ _test() {
     # install_python
     # -----------------------------------
     if [ "${make_api_calls}" = true ]; then
-      # - Test installing exact version to /tmp using explicit download URL
+      # - Test installing exact version to /tmp (will auto-construct download URL)
       printf "%s\n" "Running 'install_python 3.12.9 /tmp false'"
       rc=${RETURN_CODE_SUCCESS}
       install_python "3.12.9" "/tmp" "false" >/dev/null 2>&1 || rc=$?
