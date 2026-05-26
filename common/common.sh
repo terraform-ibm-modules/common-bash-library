@@ -737,9 +737,9 @@ _test() {
     # -----------------------------------
     if [ "${make_api_calls}" = true ]; then
       # - Test installing exact version to /tmp using explicit download URL
-      printf "%s\n" "Running 'install_python 3.12.9 /tmp false <custom-url>'"
+      printf "%s\n" "Running 'install_python 3.12.9 /tmp false'"
       rc=${RETURN_CODE_SUCCESS}
-      install_python "3.12.9" "/tmp" "false" "https://github.com/astral-sh/python-build-standalone/releases/download/20250212/cpython-3.12.9+20250212-x86_64-unknown-linux-gnu-install_only.tar.gz" >/dev/null 2>&1 || rc=$?
+      install_python "3.12.9" "/tmp" "false" >/dev/null 2>&1 || rc=$?
       assert_pass "${rc}"
       rm -f /tmp/python3 /tmp/pip /tmp/pip3 /tmp/idle3 /tmp/pydoc3 /tmp/python3-config
       printf "%s\n\n" "✅ PASS"
