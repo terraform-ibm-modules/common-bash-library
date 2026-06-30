@@ -454,6 +454,114 @@ install_kubectl() {
 }
 
 #===============================================================
+# FUNCTION: install_terragrunt
+# DESCRIPTION: Installs terragrunt binary
+#
+# ENVIRONMENT VARIABLES:
+#   - VERBOSE: If set to true, print verbose output (optional, defaults to false)
+#
+# ARGUMENTS:
+#   - $1: version of terragrunt to install (optional, defaults to latest). Example format of valid version is "v0.77.19".
+#   - $2: location to install terragrunt to (optional, defaults to /usr/local/bin)
+#   - $3: if set to true, skips installation of terragrunt if already detected (optional, defaults to true)
+#   - $4: the exact url to download terragrunt from (optional, defaults to https://github.com/gruntwork-io/terragrunt/releases/download/<version>/terragrunt_<os>_<arch>)
+#
+# RETURNS:
+#   0 - Success (terragrunt installation successful)
+#   1 - Failure (terragrunt installation failed)
+#   2 - Failure (incorrect usage of function)
+#
+# USAGE: install_terragrunt "latest" "/usr/local/bin" "true" "https://github.com/gruntwork-io/terragrunt/releases/download/<version>/terragrunt_<os>_<arch>"
+#===============================================================
+install_terragrunt() {
+
+  local version=${1:-"latest"}
+  local location=${2:-"/usr/local/bin"}
+  local skip_if_detected=${3:-"true"}
+  local link_to_binary=${4:-""}
+  local verbose=${VERBOSE:-false}
+
+  # Validate $3 arg is boolean
+  if ! is_boolean "${skip_if_detected}"; then
+    echo "Unsupported value detected for the 3rd argument. Only 'true' or 'false' is supported. Found: ${skip_if_detected}." >&2
+    return ${RETURN_CODE_ERROR_INCORRECT_USAGE}
+  fi
+
+  # return 0 if terragrunt already installed and skip_if_detected is true
+  if [ "${skip_if_detected}" == "true" ]; then
+    if check_required_bins terragrunt; then
+      if [ "${verbose}" = true ]; then
+        echo "Found terragrunt already installed. Taking no action."
+      fi
+      return ${RETURN_CODE_SUCCESS}
+    fi
+  fi
+
+  # ensure curl is installed
+  check_required_bins curl || return $?
+
+  # if no link to binary passed, determine the download link based on detected os and arch
+  if [ -z "${link_to_binary}" ]; then
+    local os="linux"
+    local arch="amd64"
+    if [[ ${OSTYPE} == 'darwin'* ]]; then
+      os="darwin"
+      arch=$(return_mac_architecture)
+    fi
+    if [ "${version}" = "latest" ]; then
+      local latest_version
+      latest_version=$(curl --silent --fail --location \
+        "https://api.github.com/repos/gruntwork-io/terragrunt/releases/latest" \
+        | grep '"tag_name"' | sed 's/.*"tag_name": *"\([^"]*\)".*/\1/')
+      link_to_binary="https://github.com/gruntwork-io/terragrunt/releases/download/${latest_version}/terragrunt_${os}_${arch}"
+    else
+      link_to_binary="https://github.com/gruntwork-io/terragrunt/releases/download/${version}/terragrunt_${os}_${arch}"
+    fi
+  fi
+
+  if [ "${verbose}" = true ]; then
+    echo "Using download link: ${link_to_binary}"
+  fi
+
+  # use sudo if needed
+  local arg=""
+  if ! [ -w "${location}" ]; then
+    echo "No write permission to ${location}. Using sudo..."
+    arg=sudo
+  fi
+
+  # remove if already exists
+  ${arg} rm -f "${location}/terragrunt"
+
+  # download binary
+  set +e
+  if ! ${arg} curl --silent \
+    --connect-timeout 5 \
+    --max-time 60 \
+    --retry 3 \
+    --retry-delay 2 \
+    --retry-connrefused \
+    --fail \
+    --show-error \
+    --location \
+    --output "${location}/terragrunt" \
+    "${link_to_binary}"
+  then
+    echo "Failed to download ${link_to_binary}"
+    return ${RETURN_CODE_ERROR}
+  fi
+  set -e
+
+  # make executable
+  ${arg} chmod +x "${location}/terragrunt"
+
+  if [ "${verbose}" = true ]; then
+    echo "Successfully completed installation to ${location}/terragrunt"
+  fi
+  return ${RETURN_CODE_SUCCESS}
+}
+
+#===============================================================
 # UNIT TESTS
 #===============================================================
 
@@ -569,6 +677,37 @@ _test() {
       printf "%s\n" "Running 'install_kubectl v1.34.2 /tmp false'"
       rc=${RETURN_CODE_SUCCESS}
       install_kubectl "v1.34.2" "/tmp" "false" >/dev/null 2>&1 || rc=$?
+      assert_pass "${rc}"
+      printf "%s\n\n" "✅ PASS"
+    fi
+
+    # install_terragrunt
+    # -----------------------------------
+    if [ "${make_api_calls}" = true ]; then
+      # Check if terragrunt already exists on $PATH
+      local terragrunt_installed=true
+      check_required_bins terragrunt || terragrunt_installed=false
+
+      # - Test installing terragrunt using defaults (when it does not already exist)
+      if [ ${terragrunt_installed} = false ]; then
+        printf "%s\n" "Running 'install_terragrunt' (when terragrunt does not already exist)"
+        rc=${RETURN_CODE_SUCCESS}
+        install_terragrunt >/dev/null 2>&1 || rc=$?
+        assert_pass "${rc}"
+        printf "%s\n\n" "✅ PASS"
+      fi
+
+      # - Test installing it when terragrunt already exists with default args (should be skipped)
+      printf "%s\n" "Running 'install_terragrunt' (when terragrunt already exists - install will be skipped)"
+      rc=${RETURN_CODE_SUCCESS}
+      install_terragrunt >/dev/null 2>&1 || rc=$?
+      assert_pass "${rc}"
+      printf "%s\n\n" "✅ PASS"
+
+      # - Test installing exact version to /tmp even if terragrunt already detected on $PATH
+      printf "%s\n" "Running 'install_terragrunt v0.77.19 /tmp false'"
+      rc=${RETURN_CODE_SUCCESS}
+      install_terragrunt "v0.77.19" "/tmp" "false" >/dev/null 2>&1 || rc=$?
       assert_pass "${rc}"
       printf "%s\n\n" "✅ PASS"
     fi
