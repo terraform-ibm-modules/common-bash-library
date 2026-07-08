@@ -481,13 +481,11 @@ install_terragrunt() {
   local link_to_binary=${4:-""}
   local verbose=${VERBOSE:-false}
 
-  # Validate $3 arg is boolean
   if ! is_boolean "${skip_if_detected}"; then
     echo "Unsupported value detected for the 3rd argument. Only 'true' or 'false' is supported. Found: ${skip_if_detected}." >&2
     return ${RETURN_CODE_ERROR_INCORRECT_USAGE}
   fi
 
-  # return 0 if terragrunt already installed and skip_if_detected is true
   if [ "${skip_if_detected}" == "true" ]; then
     if check_required_bins terragrunt; then
       if [ "${verbose}" = true ]; then
@@ -497,10 +495,8 @@ install_terragrunt() {
     fi
   fi
 
-  # ensure curl is installed
   check_required_bins curl || return $?
 
-  # if no link to binary passed, determine the download link based on detected os and arch
   if [ -z "${link_to_binary}" ]; then
     local os="linux"
     local arch="amd64"
@@ -523,17 +519,14 @@ install_terragrunt() {
     echo "Using download link: ${link_to_binary}"
   fi
 
-  # use sudo if needed
   local arg=""
   if ! [ -w "${location}" ]; then
     echo "No write permission to ${location}. Using sudo..."
     arg=sudo
   fi
 
-  # remove if already exists
   ${arg} rm -f "${location}/terragrunt"
 
-  # download binary
   set +e
   if ! ${arg} curl --silent \
     --connect-timeout 5 \
@@ -552,7 +545,6 @@ install_terragrunt() {
   fi
   set -e
 
-  # make executable
   ${arg} chmod +x "${location}/terragrunt"
 
   if [ "${verbose}" = true ]; then
