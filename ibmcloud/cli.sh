@@ -401,9 +401,9 @@ _test() {
       printf "%s\n\n" "✅ PASS"
 
       # - Test installing plugins with version syntax
-      printf "%s\n" "Running 'install_ibmcloud_plugins container-service@1.0.775,secrets-manager@2.0.16'"
+      printf "%s\n" "Running 'install_ibmcloud_plugins container-service@1.0.892,secrets-manager@2.0.20'"
       rc=${RETURN_CODE_SUCCESS}
-      install_ibmcloud_plugins "container-service@1.0.775,secrets-manager@2.0.16" >/dev/null 2>&1 || rc=$?
+      install_ibmcloud_plugins "container-service@1.0.892,secrets-manager@2.0.20" >/dev/null 2>&1 || rc=$?
       assert_pass "${rc}"
       printf "%s\n\n" "✅ PASS"
 
